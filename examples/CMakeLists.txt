@@ -10,6 +10,10 @@
 add_executable(rand_gmres.exe randGmres.cpp)
 target_link_libraries(rand_gmres.exe PRIVATE ReSolve)
 
+# Build an example with a system GMRES solver
+add_executable(sysGmres.exe sysGmres.cpp)
+target_link_libraries(sysGmres.exe PRIVATE ReSolve)
+
 if(RESOLVE_USE_KLU)
 
   # Build example with KLU factorization on CPU
@@ -45,6 +49,8 @@ set(installable_executables "")
 
 # Install all examples in bin directory
 list(APPEND installable_executables rand_gmres.exe)
+
+list(APPEND installable_executables sysGmres.exe)
 
 if(RESOLVE_USE_KLU)
   list(APPEND installable_executables kluFactor.exe kluRefactor.exe
