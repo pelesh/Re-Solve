@@ -62,6 +62,23 @@ namespace ReSolve
   }
 
   /**
+   * @brief Resets the matrix for the solver.
+   *
+   * @param[in] A - matrix to be reset
+   *
+   * @return int - error code, 0 if successful
+   */
+  int LinSolverDirect::reset(matrix::Sparse* A)
+  {
+    if (A == nullptr)
+    {
+      return 1;
+    }
+    A_ = A;
+    return 0;
+  }
+
+  /**
    * @brief Placeholder function for symbolic factorization.
    */
   int LinSolverDirect::analyze()

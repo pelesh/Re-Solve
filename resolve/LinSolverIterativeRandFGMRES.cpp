@@ -13,6 +13,7 @@
 #include <iostream>
 
 #include <resolve/GramSchmidt.hpp>
+#include <resolve/Preconditioner.hpp>
 #include <resolve/matrix/MatrixHandler.hpp>
 #include <resolve/matrix/Sparse.hpp>
 #include <resolve/random/SketchingHandler.hpp>
@@ -406,20 +407,6 @@ namespace ReSolve
     return 0;
   }
 
-  int LinSolverIterativeRandFGMRES::setupPreconditioner(std::string type, LinSolverDirect* LU_solver)
-  {
-    if (type != "LU")
-    {
-      out::warning() << "Only cusolverRf tri solve can be used as a preconditioner at this time." << std::endl;
-      return 1;
-    }
-    else
-    {
-      LU_solver_ = LU_solver;
-      return 0;
-    }
-  }
-
   index_type LinSolverIterativeRandFGMRES::getKrand()
   {
     return k_rand_;
@@ -788,7 +775,7 @@ namespace ReSolve
 
   void LinSolverIterativeRandFGMRES::precV(vector_type* rhs, vector_type* x)
   {
-    LU_solver_->solve(rhs, x);
+    preconditioner_->apply(rhs, x);
   }
 
   /**

@@ -16,6 +16,7 @@ namespace ReSolve
   // Forward declarations
   class SketchingHandler;
   class GramSchmidt;
+  class Preconditioner;
 
   namespace matrix
   {
@@ -67,7 +68,6 @@ namespace ReSolve
     int solve(vector_type* rhs, vector_type* x) override;
     int setup(matrix::Sparse* A) override;
     int resetMatrix(matrix::Sparse* new_A) override;
-    int setupPreconditioner(std::string name, LinSolverDirect* LU_solver) override;
     int setOrthogonalization(GramSchmidt* gs) override;
 
     int        setRestart(index_type restart);
@@ -123,10 +123,9 @@ namespace ReSolve
     real_type*   h_rs_{nullptr};
     vector_type* vec_aux_{nullptr};
 
-    GramSchmidt*     GS_{nullptr};
-    LinSolverDirect* LU_solver_{nullptr};
-    index_type       n_{0};
-    real_type        one_over_k_{1.0};
+    GramSchmidt* GS_{nullptr};
+    index_type   n_{0};
+    real_type    one_over_k_{1.0};
 
     index_type         k_rand_{0}; ///< size of sketch space. We need to know it so we can allocate S!
     MemoryHandler      mem_;       ///< Device memory manager object

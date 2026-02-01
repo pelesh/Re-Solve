@@ -10,6 +10,7 @@ namespace ReSolve
   class LinAlgWorkspaceCpu;
   class MatrixHandler;
   class VectorHandler;
+  class Preconditioner;
 
   namespace vector
   {
@@ -26,9 +27,6 @@ namespace ReSolve
   public:
     using vector_type = vector::Vector;
     using matrix_type = matrix::Sparse;
-
-    /// @brief Temporary until abstract preconditioner class is created
-    using precond_type = LinSolverDirect;
 
     SystemSolver(LinAlgWorkspaceCpu* workspaceCpu,
                  std::string         factor   = "klu",
@@ -52,12 +50,13 @@ namespace ReSolve
     ~SystemSolver();
 
     int initialize();
-    int setMatrix(matrix::Sparse* A);
+    int setMatrix(matrix_type* A);
     int analyze();   //    symbolic part
     int factorize(); //  numeric part
     int refactorize();
     int refactorizationSetup();
     int preconditionerSetup();
+    int resetPreconditioner(matrix_type* A);
     int solve(vector_type* rhs, vector_type* x);  // for direct and iterative
     int refine(vector_type* rhs, vector_type* x); // for iterative refinement
 
@@ -90,10 +89,10 @@ namespace ReSolve
   private:
     LinSolverDirect*    factorizationSolver_{nullptr};
     LinSolverDirect*    refactorizationSolver_{nullptr};
+    LinSolverDirect*    preconditionSolver_{nullptr};
     LinSolverIterative* iterativeSolver_{nullptr};
     GramSchmidt*        gs_{nullptr};
-
-    precond_type* preconditioner_{nullptr};
+    Preconditioner*     preconditioner_{nullptr};
 
     LinAlgWorkspaceCUDA* workspaceCuda_{nullptr};
     LinAlgWorkspaceHIP*  workspaceHip_{nullptr};

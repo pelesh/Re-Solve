@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include <resolve/GramSchmidt.hpp>
+#include <resolve/Preconditioner.hpp>
 #include <resolve/matrix/MatrixHandler.hpp>
 #include <resolve/matrix/Sparse.hpp>
 #include <resolve/random/SketchingHandler.hpp>
@@ -317,20 +318,6 @@ namespace ReSolve
     return 0;
   }
 
-  int LinSolverIterativeFGMRES::setupPreconditioner(std::string type, LinSolverDirect* LU_solver)
-  {
-    if (type != "LU")
-    {
-      out::warning() << "Only LU-type solve can be used as a preconditioner at this time." << std::endl;
-      return 1;
-    }
-    else
-    {
-      LU_solver_ = LU_solver;
-      return 0;
-    }
-  }
-
   int LinSolverIterativeFGMRES::resetMatrix(matrix::Sparse* new_matrix)
   {
     A_ = new_matrix;
@@ -598,7 +585,7 @@ namespace ReSolve
 
   void LinSolverIterativeFGMRES::precV(vector_type* rhs, vector_type* x)
   {
-    LU_solver_->solve(rhs, x);
+    preconditioner_->apply(rhs, x);
   }
 
   void LinSolverIterativeFGMRES::setMemorySpace()

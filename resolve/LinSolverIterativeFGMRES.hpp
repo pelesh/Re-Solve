@@ -16,6 +16,7 @@ namespace ReSolve
   // Forward declarations
   class SketchingHandler;
   class GramSchmidt;
+  class Preconditioner;
 
   namespace matrix
   {
@@ -55,7 +56,6 @@ namespace ReSolve
     int solve(vector_type* rhs, vector_type* x) override;
     int setup(matrix::Sparse* A) override;
     int resetMatrix(matrix::Sparse* new_A) override;
-    int setupPreconditioner(std::string name, LinSolverDirect* LU_solver) override;
     int setOrthogonalization(GramSchmidt* gs) override;
 
     int        setRestart(index_type restart);
@@ -103,10 +103,9 @@ namespace ReSolve
     real_type* h_s_{nullptr};
     real_type* h_rs_{nullptr};
 
-    GramSchmidt*     GS_{nullptr};
-    LinSolverDirect* LU_solver_{nullptr};
-    index_type       n_{0};
-    bool             is_solver_set_{false};
+    GramSchmidt* GS_{nullptr};
+    index_type   n_{0};
+    bool         is_solver_set_{false};
 
     MemoryHandler mem_; ///< Device memory manager object
   };

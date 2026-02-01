@@ -15,6 +15,7 @@ namespace ReSolve
 {
   class GramSchmidt;
   class LinSolverDirect;
+  class Preconditioner;
 
   class LinSolverIterative : public LinSolver
   {
@@ -22,8 +23,7 @@ namespace ReSolve
     LinSolverIterative();
     virtual ~LinSolverIterative();
     virtual int setup(matrix::Sparse* A);
-    virtual int resetMatrix(matrix::Sparse* A)                                    = 0;
-    virtual int setupPreconditioner(std::string type, LinSolverDirect* LU_solver) = 0;
+    virtual int resetMatrix(matrix::Sparse* A) = 0;
 
     virtual int solve(vector_type* rhs, vector_type* init_guess) = 0;
 
@@ -31,6 +31,7 @@ namespace ReSolve
     virtual real_type  getInitResidualNorm() const;
     virtual index_type getNumIter() const;
 
+    virtual int setPreconditioner(Preconditioner* preconditioner);
     virtual int setOrthogonalization(GramSchmidt* gs);
 
     real_type  getTol() const;
@@ -40,6 +41,8 @@ namespace ReSolve
     void setMaxit(index_type new_maxit);
 
   protected:
+    Preconditioner* preconditioner_{nullptr};
+
     real_type  initial_residual_norm_;
     real_type  final_residual_norm_;
     index_type total_iters_;
