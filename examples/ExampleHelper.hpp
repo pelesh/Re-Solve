@@ -57,7 +57,7 @@ namespace ReSolve
        * @pre Workspace handles are initialized
        *
        * @post Handlers are instantiated.
-       * allocated
+       *
        */
       ExampleHelper(workspace_type& workspace)
         : mh_(&workspace),
@@ -92,11 +92,6 @@ namespace ReSolve
           delete res_;
           res_ = nullptr;
         }
-        if (x_true_)
-        {
-          delete x_true_;
-          x_true_ = nullptr;
-        }
       }
 
       /// Returns the configured hardware backend
@@ -109,55 +104,6 @@ namespace ReSolve
       ReSolve::memory::MemorySpace getMemspace() const
       {
         return memspace_;
-      }
-
-      /**
-       * @brief Set the new linear system together with its computed solution
-       * and compute solution error and residual norms.
-       *
-       * This will set the new system A*x = r and compute related error norms.
-       *
-       * @param A[in] - Linear system matrix
-       * @param r[in] - Linear system right-hand side
-       * @param x[in] - Computed solution of the linear system
-       */
-      void setSystem(ReSolve::matrix::Sparse* A,
-                     ReSolve::vector::Vector* r,
-                     ReSolve::vector::Vector* x)
-      {
-        assert((res_ == nullptr) && (x_true_ == nullptr));
-        A_   = A;
-        r_   = r;
-        x_   = x;
-        res_ = new ReSolve::vector::Vector(A->getNumRows());
-        computeNorms();
-      }
-
-      /**
-       * @brief Set the new linear system together with its computed solution
-       * and compute solution error and residual norms.
-       *
-       * This is to be used after values in A and r are updated.
-       *
-       * @todo This method probably does not need any input parameters.
-       *
-       * @param A[in] - Linear system matrix
-       * @param r[in] - Linear system right-hand side
-       * @param x[in] - Computed solution of the linear system
-       */
-      void resetSystem(ReSolve::matrix::Sparse* A,
-                       ReSolve::vector::Vector* r,
-                       ReSolve::vector::Vector* x)
-      {
-        A_ = A;
-        r_ = r;
-        x_ = x;
-        if (res_ == nullptr)
-        {
-          res_ = new ReSolve::vector::Vector(A->getNumRows());
-        }
-
-        computeNorms();
       }
 
       /// Return L2 norm of the linear system residual.
@@ -173,16 +119,60 @@ namespace ReSolve
       }
 
       /// Minimalistic summary
-      void printShortSummary()
+      void printShortSummary(ReSolve::matrix::Sparse* A,
+                             ReSolve::vector::Vector* r,
+                             ReSolve::vector::Vector* x)
       {
+        A_ = A;
+        r_ = r;
+        x_ = x;
+
+        if (res_ == nullptr)
+        {
+          res_ = new ReSolve::vector::Vector(A->getNumRows());
+        }
+        else
+        {
+          if (res_->getSize() != A->getNumRows())
+          {
+            delete res_;
+            res_ = new ReSolve::vector::Vector(A->getNumRows());
+          }
+        }
+
+        res_->copyDataFrom(r_, memspace_, memspace_);
+        real_type norm  = computeResidualNorm(*A_, *x_, *res_, memspace_);
+        real_type rnorm = norm2(*r_, memspace_);
+
         std::cout << "\t2-Norm of the residual: "
                   << std::scientific << std::setprecision(16)
-                  << getNormRelativeResidual() << "\n";
+                  << norm / rnorm << "\n";
       }
 
       /// Summary of direct solve
-      void printSummary()
+      void printSummary(ReSolve::matrix::Sparse* A,
+                        ReSolve::vector::Vector* r,
+                        ReSolve::vector::Vector* x)
       {
+        A_ = A;
+        r_ = r;
+        x_ = x;
+
+        if (res_ == nullptr)
+        {
+          res_ = new ReSolve::vector::Vector(A->getNumRows());
+        }
+        else
+        {
+          if (res_->getSize() != A->getNumRows())
+          {
+            delete res_;
+            res_ = new ReSolve::vector::Vector(A->getNumRows());
+          }
+        }
+
+        computeNorms();
+
         std::cout << "\t 2-Norm of the residual (before IR): "
                   << std::scientific << std::setprecision(16)
                   << getNormRelativeResidual() << "\n";
@@ -199,9 +189,9 @@ namespace ReSolve
       {
         std::cout << "FGMRES: init nrm: "
                   << std::scientific << std::setprecision(16)
-                  << ls->getInitResidualNorm() / norm_rhs_
+                  << ls->getInitResidualNorm()
                   << " final nrm: "
-                  << ls->getFinalResidualNorm() / norm_rhs_
+                  << ls->getFinalResidualNorm()
                   << " iter: " << ls->getNumIter() << "\n";
       }
 
@@ -209,31 +199,9 @@ namespace ReSolve
       void printIterativeSolverSummary(ReSolve::LinSolverIterative* ls)
       {
         std::cout << std::setprecision(16) << std::scientific;
-        std::cout << "\t Initial residual norm          ||b-A*x||       : " << ls->getInitResidualNorm() << "\n";
-        std::cout << "\t Initial relative residual norm ||b-A*x||/||b|| : " << ls->getInitResidualNorm() / norm_rhs_ << "\n";
-        std::cout << "\t Final residual norm            ||b-A*x||       : " << ls->getFinalResidualNorm() << "\n";
-        std::cout << "\t Final relative residual norm   ||b-A*x||/||b|| : " << ls->getFinalResidualNorm() / norm_rhs_ << "\n";
+        std::cout << "\t Initial relative residual norm ||b-A*x||/||b|| : " << ls->getInitResidualNorm() << "\n";
+        std::cout << "\t Final relative residual norm   ||b-A*x||/||b|| : " << ls->getFinalResidualNorm() << "\n";
         std::cout << "\t Number of iterations                           : " << ls->getNumIter() << "\n";
-      }
-
-      /// Check the relative residual norm against `tolerance`.
-      int checkResult(ReSolve::real_type tolerance)
-      {
-        int                error_sum = 0;
-        ReSolve::real_type norm      = norm_res_ / norm_rhs_;
-
-        if (!std::isfinite(norm))
-        {
-          std::cout << "Result is not a finite number!\n";
-          error_sum++;
-        }
-        if (norm > tolerance)
-        {
-          std::cout << "Result inaccurate!\n";
-          error_sum++;
-        }
-
-        return error_sum;
       }
 
       /**
@@ -384,15 +352,14 @@ namespace ReSolve
       }
 
     private:
-      ReSolve::matrix::Sparse* A_; ///< pointer to system matrix
-      ReSolve::vector::Vector* r_; ///< pointer to system right-hand side
-      ReSolve::vector::Vector* x_; ///< pointer to the computed solution
+      ReSolve::matrix::Sparse* A_{nullptr}; ///< pointer to system matrix
+      ReSolve::vector::Vector* r_{nullptr}; ///< pointer to system right-hand side
+      ReSolve::vector::Vector* x_{nullptr}; ///< pointer to the computed solution
 
       ReSolve::MatrixHandler mh_; ///< matrix handler instance
       ReSolve::VectorHandler vh_; ///< vector handler instance
 
-      ReSolve::vector::Vector* res_{nullptr};    ///< pointer to residual vector
-      ReSolve::vector::Vector* x_true_{nullptr}; ///< pointer to solution error vector
+      ReSolve::vector::Vector* res_{nullptr}; ///< pointer to residual vector
 
       ReSolve::real_type norm_rhs_{0.0}; ///< right-hand side vector norm
       ReSolve::real_type norm_res_{0.0}; ///< residual vector norm
