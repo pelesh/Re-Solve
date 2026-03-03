@@ -159,7 +159,7 @@ namespace ReSolve
     vec_Z_->setToZero(memspace_);
     vec_V_->setToZero(memspace_);
 
-    rhs->copyDataTo(vec_V_->getData(memspace_), 0, memspace_);
+    rhs->copyToExternal(vec_V_->getData(memspace_), 0, memspace_, memspace_);
     matrix_handler_->matvec(A_, x, vec_V_, &MINUS_ONE, &ONE, memspace_);
 
     vec_v.setData(vec_V_->getData(0, memspace_), memspace_);
@@ -266,7 +266,7 @@ namespace ReSolve
 
         // now post-process
         vec_aux_->resize(i + 1);
-        vec_aux_->copyDataFrom(&h_H_[i * (restart_ + 1)], memory::HOST, memspace_);
+        vec_aux_->copyFromExternal(&h_H_[i * (restart_ + 1)], memory::HOST, memspace_);
 
         // V(:, i+1) = w - V(:, 1:i)*d_H_col = V(:, i+1) - d_H_col*V(:,1:i);
         vector_handler_->gemv('N', n_, i + 1, &MINUS_ONE, &ONE, vec_V_, vec_aux_, &vec_v, memspace_);
@@ -366,7 +366,7 @@ namespace ReSolve
         outer_flag = 0;
       }
 
-      rhs->copyDataTo(vec_V_->getData(memspace_), 0, memspace_);
+      rhs->copyToExternal(vec_V_->getData(memspace_), 0, memspace_, memspace_);
       matrix_handler_->matvec(A_, x, vec_V_, &MINUS_ONE, &ONE, memspace_);
       if (outer_flag)
       {

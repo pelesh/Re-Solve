@@ -57,8 +57,8 @@ namespace ReSolve
       {
         B_ = allocateCholmodType(B);
       }
-      copyDataToCholmodType(A, A_);
-      copyDataToCholmodType(B, B_);
+      copyDataCholmodType(A, A_);
+      copyDataCholmodType(B, B_);
     }
 
     void SpGEMMCpu::loadSumMatrix(matrix::Csr* D)
@@ -67,7 +67,7 @@ namespace ReSolve
       {
         D_ = allocateCholmodType(D);
       }
-      copyDataToCholmodType(D, D_);
+      copyDataCholmodType(D, D_);
     }
 
     void SpGEMMCpu::loadResultMatrix(matrix::Csr** E_ptr)
@@ -95,13 +95,13 @@ namespace ReSolve
         (*E_ptr_)->destroyMatrixData(memory::HOST);
       }
 
-      // Previous data must be de-allocated and new data copied
-      // Cholmod does not allow for reuse of arrays
-      (*E_ptr_)->copyDataFrom(static_cast<index_type*>(E_chol->p),
-                              static_cast<index_type*>(E_chol->i),
-                              static_cast<real_type*>(E_chol->x),
-                              memory::HOST,
-                              memory::HOST);
+      // Previous data must be de-allocated and new data copied.
+      // Cholmod does not allow for reuse of arrays.
+      (*E_ptr_)->copyFromExternal(static_cast<index_type*>(E_chol->p),
+                                  static_cast<index_type*>(E_chol->i),
+                                  static_cast<real_type*>(E_chol->x),
+                                  memory::HOST,
+                                  memory::HOST);
     }
 
     /**
@@ -126,7 +126,7 @@ namespace ReSolve
      * @param A[in] - Pointer to CSR matrix
      * @param A_chol[in] - Pointer to CHOLMOD sparse matrix
      */
-    void SpGEMMCpu::copyDataToCholmodType(matrix::Csr* A, cholmod_sparse* A_chol)
+    void SpGEMMCpu::copyDataCholmodType(matrix::Csr* A, cholmod_sparse* A_chol)
     {
       mem_.copyArrayHostToHost(
           static_cast<int*>(A_chol->p), A->getRowData(memory::HOST), A->getNumRows() + 1);
