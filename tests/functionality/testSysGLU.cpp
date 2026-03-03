@@ -153,8 +153,8 @@ int main(int argc, char* argv[])
   // Compute norm of scaled residuals
   real_type inf_norm_A = 0.0;
   matrix_handler.matrixInfNorm(A, &inf_norm_A, ReSolve::memory::DEVICE);
-  real_type inf_norm_x = vector_handler.infNorm(vec_x, ReSolve::memory::DEVICE);
-  real_type inf_norm_r = vector_handler.infNorm(vec_r, ReSolve::memory::DEVICE);
+  real_type inf_norm_x = vector_handler.amax(vec_x, ReSolve::memory::DEVICE);
+  real_type inf_norm_r = vector_handler.amax(vec_r, ReSolve::memory::DEVICE);
   real_type nsr_norm   = inf_norm_r / (inf_norm_A * inf_norm_x);
   real_type nsr_system = solver.getNormOfScaledResiduals(vec_rhs, vec_x);
   real_type error      = std::abs(nsr_system - nsr_norm) / nsr_norm;
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
 
   // compute ||x_diff|| = ||x - x_true|| norm
   vec_diff->copyFromExternal(x_data_ref, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
-  vector_handler.axpy(&MINUS_ONE, vec_x, vec_diff, ReSolve::memory::DEVICE);
+  vector_handler.axpy(MINUS_ONE, vec_x, vec_diff, ReSolve::memory::DEVICE);
   real_type normDiffMatrix1 = sqrt(vector_handler.dot(vec_diff, vec_diff, ReSolve::memory::DEVICE));
 
   // Compute residual norm ON THE GPU using REFERENCE solution
@@ -268,8 +268,8 @@ int main(int argc, char* argv[])
   // Compute norm of scaled residuals for the second system
   inf_norm_A = 0.0;
   matrix_handler.matrixInfNorm(A, &inf_norm_A, ReSolve::memory::DEVICE);
-  inf_norm_x = vector_handler.infNorm(vec_x, ReSolve::memory::DEVICE);
-  inf_norm_r = vector_handler.infNorm(vec_r, ReSolve::memory::DEVICE);
+  inf_norm_x = vector_handler.amax(vec_x, ReSolve::memory::DEVICE);
+  inf_norm_r = vector_handler.amax(vec_r, ReSolve::memory::DEVICE);
   nsr_norm   = inf_norm_r / (inf_norm_A * inf_norm_x);
   nsr_system = solver.getNormOfScaledResiduals(vec_rhs, vec_x);
   error      = std::abs(nsr_system - nsr_norm) / nsr_norm;
@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
 
   // compute ||x_diff|| = ||x - x_true|| norm
   vec_diff->copyFromExternal(x_data_ref, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
-  vector_handler.axpy(&MINUS_ONE, vec_x, vec_diff, ReSolve::memory::DEVICE);
+  vector_handler.axpy(MINUS_ONE, vec_x, vec_diff, ReSolve::memory::DEVICE);
   real_type normDiffMatrix2 = sqrt(vector_handler.dot(vec_diff, vec_diff, ReSolve::memory::DEVICE));
 
   // compute the residual using exact solution

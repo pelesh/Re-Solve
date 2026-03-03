@@ -141,11 +141,11 @@ namespace ReSolve
        * @param[in]  alpha  - doble array, size [k x 1]
        */
       template <size_t Tmaxk = 1024>
-      __global__ void massAxpy3(index_type       N,
-                                index_type       k,
-                                const real_type* x_data,
-                                real_type*       y_data,
-                                const real_type* alpha)
+      __global__ void axpyMulti3(index_type       N,
+                                 index_type       k,
+                                 const real_type* x_data,
+                                 real_type*       y_data,
+                                 const real_type* alpha)
       {
         index_type           i = blockIdx.x * blockDim.x + threadIdx.x;
         index_type           t = threadIdx.x;
@@ -287,12 +287,12 @@ namespace ReSolve
      * value of Tv5?
      * @todo Should we use dynamic shared memory here instead?
      */
-    void mass_inner_product_two_vectors(index_type       n,
-                                        index_type       i,
-                                        const real_type* vec1,
-                                        const real_type* vec2,
-                                        const real_type* mvec,
-                                        real_type*       result)
+    void dot_2_multi(index_type       n,
+                     index_type       i,
+                     const real_type* vec1,
+                     const real_type* vec2,
+                     const real_type* mvec,
+                     real_type*       result)
     {
       kernels::MassIPTwoVec<<<i, 1024>>>(vec1, vec2, mvec, result, i, n);
     }
@@ -306,9 +306,9 @@ namespace ReSolve
      * @param[out] y     - (n x (i+1)) multivector
      * @param[in]  alpha - ((i+1) x 1) vector
      */
-    void mass_axpy(index_type n, index_type i, const real_type* x, real_type* y, const real_type* alpha)
+    void axpy_multi(index_type n, index_type i, const real_type* x, real_type* y, const real_type* alpha)
     {
-      kernels::massAxpy3<<<(n + 384 - 1) / 384, 384>>>(n, i, x, y, alpha);
+      kernels::axpyMulti3<<<(n + 384 - 1) / 384, 384>>>(n, i, x, y, alpha);
     }
 
     /**

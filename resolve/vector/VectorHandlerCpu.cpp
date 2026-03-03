@@ -1,5 +1,7 @@
 #include "VectorHandlerCpu.hpp"
 
+#include <cassert>
+
 #include <resolve/utilities/logger/Logger.hpp>
 #include <resolve/vector/Vector.hpp>
 #include <resolve/vector/VectorHandlerImpl.hpp>
@@ -45,10 +47,10 @@ namespace ReSolve
 
   real_type VectorHandlerCpu::dot(vector::Vector* x, vector::Vector* y)
   {
-    real_type* x_data = x->getData(memory::HOST);
-    real_type* y_data = y->getData(memory::HOST);
-    real_type  sum    = 0.0;
-    real_type  c      = 0.0;
+    const real_type* x_data = x->getData(memory::HOST);
+    const real_type* y_data = y->getData(memory::HOST);
+    real_type        sum    = 0.0;
+    real_type        c      = 0.0;
     // real_type t, y;
     for (int i = 0; i < x->getSize(); ++i)
     {
@@ -68,14 +70,15 @@ namespace ReSolve
    * @param[in,out] x The vector
    *
    */
-  void VectorHandlerCpu::scal(const real_type* alpha, vector::Vector* x)
+  void VectorHandlerCpu::scal(const real_type alpha, vector::Vector* x)
   {
     real_type* x_data = x->getData(memory::HOST);
 
     for (int i = 0; i < x->getSize(); ++i)
     {
-      x_data[i] *= (*alpha);
+      x_data[i] *= alpha;
     }
+    x->setDataUpdated(memory::HOST);
   }
 
   /**
@@ -86,11 +89,12 @@ namespace ReSolve
    * @return infinity norm (real number) of _x_
    *
    */
-  real_type VectorHandlerCpu::infNorm(vector::Vector* x)
+  real_type VectorHandlerCpu::amax(vector::Vector* x)
   {
-    real_type* x_data = x->getData(memory::HOST);
-    real_type  vecmax = std::abs(x_data[0]);
-    real_type  v;
+    const real_type* x_data = x->getData(memory::HOST);
+
+    real_type vecmax = std::abs(x_data[0]);
+    real_type v;
     for (int i = 1; i < x->getSize(); ++i)
     {
       v = std::abs(x_data[i]);
@@ -110,15 +114,16 @@ namespace ReSolve
    * @param[in,out] y The second vector (result is return in y)
    *
    */
-  void VectorHandlerCpu::axpy(const real_type* alpha, vector::Vector* x, vector::Vector* y)
+  void VectorHandlerCpu::axpy(const real_type alpha, /* const */ vector::Vector* x, vector::Vector* y)
   {
     // AXPY:  y = alpha * x + y
     real_type* x_data = x->getData(memory::HOST);
     real_type* y_data = y->getData(memory::HOST);
     for (int i = 0; i < x->getSize(); ++i)
     {
-      y_data[i] = (*alpha) * x_data[i] + y_data[i];
+      y_data[i] = alpha * x_data[i] + y_data[i];
     }
+    y->setDataUpdated(memory::HOST);
   }
 
   /**
@@ -134,34 +139,43 @@ namespace ReSolve
    * @param[in] y Vector, k x 1 if N and n x 1 if T
    * @param[in,out] x Vector, n x 1 if N and k x 1 if T
    *
-   * @pre   V is stored colum-wise, _n_ > 0, _k_ > 0
+   * @note Parameter k is not the total number of columns in V but the number
+   * of columns to use in matrix-vector product.
+   *
+   * @pre _n_ > 0, _k_ > 0
+   * @pre Number of columns in V >= k
+   * @pre If transpose = N, size of y must equal k. If transpose = T, size of
+   * x must equal k.
    *
    */
-  void VectorHandlerCpu::gemv(char             transpose,
-                              index_type       n,
-                              index_type       k,
-                              const real_type* alpha,
-                              const real_type* beta,
-                              vector::Vector*  V,
-                              vector::Vector*  y,
-                              vector::Vector*  x)
+  void VectorHandlerCpu::gemv(char            transpose,
+                              index_type      k,
+                              const real_type alpha,
+                              const real_type beta,
+                              vector::Vector* V,
+                              vector::Vector* y,
+                              vector::Vector* x)
   {
     // x = beta*x +  alpha*V*y OR x = beta*x + alpha*V^Ty
-    real_type* V_data = V->getData(memory::HOST);
-    real_type* y_data = y->getData(memory::HOST);
-    real_type* x_data = x->getData(memory::HOST);
+    const real_type* V_data = V->getData(memory::HOST);
+    const real_type* y_data = y->getData(memory::HOST);
+    real_type*       x_data = x->getData(memory::HOST);
+    const index_type n      = V->getSize();
+
     index_type i, j;
     real_type  sum;
     switch (transpose)
     {
     case 'T':
+      assert((V->getSize() == y->getSize())
+             && "gemv: Size mismatch! Size of V does not match size of y.");
       for (i = 0; i < k; ++i)
       {
-        sum         = (*beta) * x_data[i];
+        sum         = beta * x_data[i];
         real_type c = 0.0;
         for (j = 0; j < n; ++j)
         {
-          real_type y = ((*alpha) * V_data[i * n + j] * y_data[j]) - c;
+          real_type y = (alpha * V_data[i * n + j] * y_data[j]) - c;
           real_type t = sum + y;
           c           = (t - sum) - y;
           sum         = t;
@@ -171,13 +185,15 @@ namespace ReSolve
       }
       break;
     default:
+      assert((V->getSize() == x->getSize())
+             && "gemv: Size mismatch! Size of V does not match size of x.");
       for (i = 0; i < n; ++i)
       {
-        sum         = (*beta) * x_data[i];
+        sum         = beta * x_data[i];
         real_type c = 0.0;
         for (j = 0; j < k; ++j)
         {
-          real_type y = ((*alpha) * V_data[n * j + i] * y_data[j]) - c;
+          real_type y = (alpha * V_data[n * j + i] * y_data[j]) - c;
           real_type t = sum + y;
           c           = (t - sum) - y;
           sum         = t;
@@ -192,6 +208,7 @@ namespace ReSolve
       }
       break;
     } // switch
+    x->setDataUpdated(memory::HOST);
   }
 
   /**
@@ -205,11 +222,11 @@ namespace ReSolve
    * @pre   _k_ > 0, _size_ > 0, _size_ = x->getSize()
    *
    */
-  void VectorHandlerCpu::massAxpy(index_type      size,
-                                  vector::Vector* alpha,
-                                  index_type      k,
-                                  vector::Vector* x,
-                                  vector::Vector* y)
+  void VectorHandlerCpu::axpyMulti(index_type      size,
+                                   vector::Vector* alpha,
+                                   index_type      k,
+                                   vector::Vector* x,
+                                   vector::Vector* y)
   {
 
     real_type* alpha_data = alpha->getData(memory::HOST);
@@ -227,6 +244,7 @@ namespace ReSolve
       }
       y_data[i] = y_data[i] - sum;
     }
+    y->setDataUpdated(memory::HOST);
   }
 
   /**
@@ -242,15 +260,15 @@ namespace ReSolve
    * @pre   _size_ > 0, _k_ > 0, size = x->getSize(), _res_ needs to be allocated
    *
    */
-  void VectorHandlerCpu::massDot2Vec(index_type      size,
-                                     vector::Vector* V,
-                                     index_type      q,
-                                     vector::Vector* x,
-                                     vector::Vector* res)
+  void VectorHandlerCpu::dot2Multi(index_type      size,
+                                   vector::Vector* V,
+                                   index_type      q,
+                                   vector::Vector* x,
+                                   vector::Vector* res)
   {
-    real_type* res_data = res->getData(memory::HOST);
-    real_type* x_data   = x->getData(memory::HOST);
-    real_type* V_data   = V->getData(memory::HOST);
+    real_type*       res_data = res->getData(memory::HOST);
+    const real_type* x_data   = x->getData(memory::HOST);
+    const real_type* V_data   = V->getData(memory::HOST);
 
     real_type c0 = 0.0;
     real_type cq = 0.0;
@@ -274,6 +292,7 @@ namespace ReSolve
         res_data[i + q] = tq;
       }
     }
+    res->setDataUpdated(memory::HOST);
   }
 
   /**
@@ -284,18 +303,17 @@ namespace ReSolve
    *
    * @return 0 if successful, 1 otherwise
    */
-  int VectorHandlerCpu::scale(vector::Vector* diag, vector::Vector* vec)
+  void VectorHandlerCpu::scal(vector::Vector* diag, vector::Vector* vec)
   {
-    real_type* diag_data = diag->getData(memory::HOST);
-    real_type* vec_data  = vec->getData(memory::HOST);
-    index_type n         = vec->getSize();
+    const real_type* diag_data = diag->getData(memory::HOST);
+    real_type*       vec_data  = vec->getData(memory::HOST);
+    index_type       n         = vec->getSize();
 
     for (index_type i = 0; i < n; ++i)
     {
       vec_data[i] *= diag_data[i];
     }
     vec->setDataUpdated(memory::HOST);
-    return 0;
   }
 
 } // namespace ReSolve

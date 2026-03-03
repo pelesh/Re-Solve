@@ -158,7 +158,7 @@ namespace ReSolve
         t                              = vector_handler_->dot(vec_v_, vec_w_, memspace_);
         H[idxmap(i, j, num_vecs_ + 1)] = t;
         t *= -1.0;
-        vector_handler_->axpy(&t, vec_v_, vec_w_, memspace_);
+        vector_handler_->axpy(t, vec_v_, vec_w_, memspace_);
       }
       t = 0.0;
       t = vector_handler_->dot(vec_w_, vec_w_, memspace_);
@@ -168,7 +168,7 @@ namespace ReSolve
       if (std::abs(t) > MACHINE_EPSILON)
       {
         t = 1.0 / t;
-        vector_handler_->scal(&t, vec_w_, memspace_);
+        vector_handler_->scal(t, vec_w_, memspace_);
       }
       else
       {
@@ -178,10 +178,15 @@ namespace ReSolve
       return 0;
 
     case CGS2:
+      // std::cout << "k = " << i + 1 << std::endl;
+      // std::cout << "size of V: " << V->getSize() << std::endl;
+      // std::cout << "num vecs in V: " << V->getNumVectors() << std::endl;
+      // std::cout << "size of y (vec_v_): " << vec_v_->getSize() << std::endl;
+      // std::cout << "size of x (vec_Hcolumn_): " << vec_Hcolumn_->getSize() << std::endl << std::endl;
       vec_v_->setData(V->getData(i + 1, memspace_), memspace_);
-      vector_handler_->gemv('T', n, i + 1, &ONE, &ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
+      vector_handler_->gemv('T', i + 1, ONE, ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
       // V(:,i+1) = V(:, i+1) -  V(:,1:i)*Hcol
-      vector_handler_->gemv('N', n, i + 1, &ONE, &MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
+      vector_handler_->gemv('N', i + 1, ONE, MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
       mem_.deviceSynchronize();
 
       // copy H_col to aux, we will need it later
@@ -191,11 +196,11 @@ namespace ReSolve
       mem_.deviceSynchronize();
 
       // Hcol = V(:,1:i)^T*V(:,i+1);
-      vector_handler_->gemv('T', n, i + 1, &ONE, &ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
+      vector_handler_->gemv('T', i + 1, ONE, ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
       mem_.deviceSynchronize();
 
       // V(:,i+1) = V(:, i+1) -  V(:,1:i)*Hcol
-      vector_handler_->gemv('N', n, i + 1, &ONE, &MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
+      vector_handler_->gemv('N', i + 1, ONE, MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
       mem_.deviceSynchronize();
 
       // copy H_col to H
@@ -218,7 +223,7 @@ namespace ReSolve
       if (std::abs(t) > MACHINE_EPSILON)
       {
         t = 1.0 / t;
-        vector_handler_->scal(&t, vec_v_, memspace_);
+        vector_handler_->scal(t, vec_v_, memspace_);
       }
       else
       {
@@ -233,7 +238,7 @@ namespace ReSolve
       vec_w_->setData(V->getData(i + 1, memspace_), memspace_);
       vec_rv_->resize(i + 1);
 
-      vector_handler_->massDot2Vec(n, V, i + 1, vec_x_, vec_rv_, memspace_);
+      vector_handler_->dot2Multi(n, V, i + 1, vec_x_, vec_rv_, memspace_);
       vec_rv_->setDataUpdated(memspace_);
       if (memspace_ == memory::DEVICE)
       {
@@ -260,7 +265,7 @@ namespace ReSolve
       } // for j
       vec_Hcolumn_->resize(i + 1);
       vec_Hcolumn_->copyFromExternal(&H[idxmap(i, 0, num_vecs_ + 1)], memory::HOST, memspace_);
-      vector_handler_->massAxpy(n, vec_Hcolumn_, i + 1, V, vec_w_, memspace_);
+      vector_handler_->axpyMulti(n, vec_Hcolumn_, i + 1, V, vec_w_, memspace_);
 
       // normalize (second synch)
       t = vector_handler_->dot(vec_w_, vec_w_, memspace_);
@@ -270,7 +275,7 @@ namespace ReSolve
       if (std::abs(t) > MACHINE_EPSILON)
       {
         t = 1.0 / t;
-        vector_handler_->scal(&t, vec_w_, memspace_);
+        vector_handler_->scal(t, vec_w_, memspace_);
         for (int ii = 0; ii <= i; ++ii)
         {
           vec_v_->setData(V->getData(ii, memspace_), memspace_);
@@ -290,7 +295,7 @@ namespace ReSolve
       vec_w_->setData(V->getData(i + 1, memspace_), memspace_);
       vec_rv_->resize(i + 1);
 
-      vector_handler_->massDot2Vec(n, V, i + 1, vec_x_, vec_rv_, memspace_);
+      vector_handler_->dot2Multi(n, V, i + 1, vec_x_, vec_rv_, memspace_);
       vec_rv_->setDataUpdated(memspace_);
       if (memspace_ == memory::DEVICE)
       {
@@ -351,7 +356,7 @@ namespace ReSolve
       vec_Hcolumn_->resize(i + 1);
       vec_Hcolumn_->copyFromExternal(&H[idxmap(i, 0, num_vecs_ + 1)], memory::HOST, memspace_);
 
-      vector_handler_->massAxpy(n, vec_Hcolumn_, i + 1, V, vec_w_, memspace_);
+      vector_handler_->axpyMulti(n, vec_Hcolumn_, i + 1, V, vec_w_, memspace_);
       // normalize (second synch)
       t = vector_handler_->dot(vec_w_, vec_w_, memspace_);
       // set the last entry in Hessenberg matrix
@@ -360,7 +365,7 @@ namespace ReSolve
       if (std::abs(t) > MACHINE_EPSILON)
       {
         t = 1.0 / t;
-        vector_handler_->scal(&t, vec_w_, memspace_);
+        vector_handler_->scal(t, vec_w_, memspace_);
       }
       else
       {
@@ -373,9 +378,9 @@ namespace ReSolve
     case CGS1:
       vec_v_->setData(V->getData(i + 1, memspace_), memspace_);
       // Hcol = V(:,1:i)^T*V(:,i+1);
-      vector_handler_->gemv('T', n, i + 1, &ONE, &ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
+      vector_handler_->gemv('T', i + 1, ONE, ZERO, V, vec_v_, vec_Hcolumn_, memspace_);
       // V(:,i+1) = V(:, i+1) -  V(:,1:i)*Hcol
-      vector_handler_->gemv('N', n, i + 1, &ONE, &MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
+      vector_handler_->gemv('N', i + 1, ONE, MINUS_ONE, V, vec_Hcolumn_, vec_v_, memspace_);
       mem_.deviceSynchronize();
 
       // copy H_col to H
@@ -391,7 +396,7 @@ namespace ReSolve
       if (std::abs(t) > MACHINE_EPSILON)
       {
         t = 1.0 / t;
-        vector_handler_->scal(&t, vec_v_, memspace_);
+        vector_handler_->scal(t, vec_v_, memspace_);
       }
       else
       {

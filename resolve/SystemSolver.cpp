@@ -3,7 +3,6 @@
 
 #include <resolve/GramSchmidt.hpp>
 #include <resolve/LinSolverDirectCpuILU0.hpp>
-#include <resolve/LinSolverDirectSerialILU0.hpp>
 #include <resolve/LinSolverIterativeFGMRES.hpp>
 #include <resolve/PreconditionerLU.hpp>
 #include <resolve/matrix/Csc.hpp>
@@ -319,7 +318,7 @@ namespace ReSolve
     {
       if (memspace_ == "cpu")
       {
-        preconditionSolver_ = new LinSolverDirectSerialILU0(workspaceCpu_);
+        preconditionSolver_ = new LinSolverDirectCpuILU0(workspaceCpu_);
         preconditioner_     = new PreconditionerLU(preconditionSolver_);
 #ifdef RESOLVE_USE_CUDA
       }
@@ -876,8 +875,8 @@ namespace ReSolve
     }
     matrixHandler_->setValuesChanged(true, ms);
     matrixHandler_->matvec(A_, x, resVector_, &ONE, &MINUS_ONE, ms);
-    resnorm = vectorHandler_->infNorm(resVector_, ms);
-    norm_x  = vectorHandler_->infNorm(x, ms);
+    resnorm = vectorHandler_->amax(resVector_, ms);
+    norm_x  = vectorHandler_->amax(x, ms);
     matrixHandler_->matrixInfNorm(A_, &norm_A, ms);
     return resnorm / (norm_x * norm_A);
   }

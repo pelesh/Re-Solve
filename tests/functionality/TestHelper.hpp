@@ -305,8 +305,8 @@ public:
     // Compute norm of scaled residuals
     real_type inf_norm_A = 0.0;
     mh_.matrixInfNorm(A_, &inf_norm_A, memspace_);
-    real_type inf_norm_x   = vh_.infNorm(x_, memspace_);
-    real_type inf_norm_res = vh_.infNorm(res_, memspace_);
+    real_type inf_norm_x   = vh_.amax(x_, memspace_);
+    real_type inf_norm_res = vh_.amax(res_, memspace_);
     real_type nsr_norm     = inf_norm_res / (inf_norm_A * inf_norm_x);
     real_type error        = std::abs(nsr_system - nsr_norm) / nsr_norm;
 
@@ -469,7 +469,7 @@ private:
                                      ReSolve::memory::MemorySpace memspace)
   {
     using namespace ReSolve::constants;
-    vh_.axpy(&MINUS_ONE, &x_true, &x, memspace); // x := -x_true + x
+    vh_.axpy(MINUS_ONE, &x_true, &x, memspace); // x := -x_true + x
     return norm2(x, memspace);
   }
 

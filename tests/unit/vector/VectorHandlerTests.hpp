@@ -49,7 +49,7 @@ namespace ReSolve
         return status.report(__func__);
       }
 
-      TestOutcome infNorm(index_type N)
+      TestOutcome amax(index_type N)
       {
         TestStatus status;
         status = true;
@@ -63,7 +63,7 @@ namespace ReSolve
         }
         x.copyFromExternal(data, memory::HOST, memspace_);
 
-        real_type result = handler_.infNorm(&x, memspace_);
+        real_type result = handler_.amax(&x, memspace_);
         real_type answer = static_cast<real_type>(N - 1) * 0.1;
 
         if (!isEqual(result, answer))
@@ -93,7 +93,7 @@ namespace ReSolve
         real_type alpha = 0.5;
 
         // the result is a vector with y[i] = 2.5 forall i;
-        handler_.axpy(&alpha, &x, &y, memspace_);
+        handler_.axpy(alpha, &x, &y, memspace_);
         status *= verifyAnswer(y, 2.5);
 
         return status.report(__func__);
@@ -141,13 +141,13 @@ namespace ReSolve
 
         // the answer is x[i] = 4.375;
         real_type answer = 4.375;
-        handler_.scal(&alpha, &x, memspace_);
+        handler_.scal(alpha, &x, memspace_);
         status *= verifyAnswer(x, answer);
 
         return status.report(__func__);
       }
 
-      TestOutcome massAxpy(index_type N, index_type K)
+      TestOutcome axpyMulti(index_type N, index_type K)
       {
         TestStatus status;
 
@@ -180,7 +180,7 @@ namespace ReSolve
         index_type r   = K % 2;
         real_type  res = (real_type) ((floor((real_type) K / 2.0) + r) * 1.0 + floor((real_type) K / 2.0) * (-0.5));
 
-        handler_.massAxpy(N, &alpha, K, &x, &y, memspace_);
+        handler_.axpyMulti(N, &alpha, K, &x, &y, memspace_);
         status *= verifyAnswer(y, 2.0 - res);
 
         return status.report(__func__);
@@ -199,7 +199,7 @@ namespace ReSolve
 
         x.setToConst(1.0, memspace_);
         y.setToConst(-1.0, memspace_);
-        handler_.massDot2Vec(N, &x, K, &y, &res, memspace_);
+        handler_.dot2Multi(N, &x, K, &y, &res, memspace_);
 
         status *= verifyAnswer(res, (-1.0) * (real_type) N);
 
@@ -230,9 +230,9 @@ namespace ReSolve
 
         real_type alpha = -1.0;
         real_type beta  = 1.0;
-        handler_.gemv('N', N, K, &alpha, &beta, &V, &yN, &xN, memspace_);
+        handler_.gemv('N', K, alpha, beta, &V, &yN, &xN, memspace_);
         status *= verifyAnswer(xN, static_cast<real_type>(K) + 0.5);
-        handler_.gemv('T', N, K, &alpha, &beta, &V, &yT, &xT, memspace_);
+        handler_.gemv('T', K, alpha, beta, &V, &yT, &xT, memspace_);
         status *= verifyAnswer(xT, static_cast<real_type>(N) + 0.5);
 
         return status.report(__func__);
@@ -259,7 +259,7 @@ namespace ReSolve
         }
         diag.copyFromExternal(diag_data.get(), memory::HOST, memspace_);
 
-        handler_.scale(&diag, &vec, memspace_);
+        handler_.scal(&diag, &vec, memspace_);
 
         if (memspace_ == memory::DEVICE)
         {

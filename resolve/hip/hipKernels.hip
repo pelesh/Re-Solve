@@ -131,7 +131,7 @@ namespace ReSolve {
       * @param[in]  alpha  -
       */
       template <size_t Tmaxk = 1024>
-      __global__ void massAxpy3_kernel(index_type N,
+      __global__ void axpyMulti3_kernel(index_type N,
                                        index_type k,
                                        const real_type* x_data,
                                        real_type* y_data,
@@ -388,12 +388,12 @@ namespace ReSolve {
     * value of Tv5?
     * @todo Should we use dynamic shared memory here instead?
     */
-    void mass_inner_product_two_vectors(index_type n,
-                                        index_type i,
-                                        real_type* vec1,
-                                        real_type* vec2,
-                                        real_type* mvec,
-                                        real_type* result)
+    void dot_2_multi(index_type n,
+                     index_type i,
+                     real_type* vec1,
+                     real_type* vec2,
+                     real_type* mvec,
+                     real_type* result)
     {
       hipLaunchKernelGGL(kernels::MassIPTwoVec_kernel,
                          dim3(i),
@@ -417,9 +417,9 @@ namespace ReSolve {
     * @param[out] y     - (n x (i+1)) multivector
     * @param[in]  alpha - ((i+1) x 1) vector
     */
-    void mass_axpy(index_type n, index_type i, real_type* x, real_type* y, real_type* alpha)
+    void axpy_multi(index_type n, index_type i, real_type* x, real_type* y, real_type* alpha)
     {
-      hipLaunchKernelGGL(kernels::massAxpy3_kernel,
+      hipLaunchKernelGGL(kernels::axpyMulti3_kernel,
                          dim3((n + 384 - 1) / 384),
                          dim3(384),
                          0,
