@@ -45,6 +45,15 @@ namespace ReSolve
     // Scale a vector by a diagonal matrix
     virtual void scal(vector::Vector* diag, vector::Vector* vec) = 0;
 
+    // Divide the elements of a vector by the elements of another vector
+    virtual int diagSolve(vector::Vector* diag, vector::Vector* vec) = 0;
+
+    // Compute element-wise max of two vectors
+    virtual int max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out) = 0;
+
+    // Compute element-wise absolute value of a vector
+    virtual int abs(/* const */ vector::Vector* in, vector::Vector* out) = 0;
+
     /** gemv:
      * if `transpose = N` (no), `x = beta*x +  alpha*V*y`,
      * where `x` is `[n x 1]`, `V` is `[n x k]` and `y` is `[k x 1]`.

@@ -57,6 +57,12 @@ namespace ReSolve
 
     virtual void scal(vector::Vector* diag, vector::Vector* vec);
 
+    virtual int diagSolve(vector::Vector* diag, vector::Vector* vec);
+
+    virtual int max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out);
+
+    virtual int abs(/* const */ vector::Vector* in, vector::Vector* out);
+
   private:
     LinAlgWorkspaceCpu* workspace_;
   };

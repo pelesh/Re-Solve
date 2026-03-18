@@ -67,6 +67,11 @@ namespace ReSolve
               vector::Vector*     x,
               memory::MemorySpace memspace);
 
+    int diagSolve(vector::Vector* diag, vector::Vector* vec, memory::MemorySpace memspace);
+    int max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out, memory::MemorySpace memspace);
+
+    int abs(/* const */ vector::Vector* in, vector::Vector* out, memory::MemorySpace memspace);
+
     // Vector infinity norm
     real_type amax(vector::Vector* x, memory::MemorySpace memspace);
 

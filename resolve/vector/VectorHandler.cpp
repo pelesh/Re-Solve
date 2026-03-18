@@ -342,6 +342,95 @@ namespace ReSolve
   }
 
   /**
+   * @brief Multiplies vector by an inverse of a diagonal matrix.
+   *
+   * @param[in]  diag   - diagonal matrix stored in a vector object
+   * @param[in,out] vec - vector to be divided
+   * @param[in] memspace - Device where the operation is computed
+   *
+   * @pre The two vectors must be the same size
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandler::diagSolve(vector::Vector* diag, vector::Vector* vec, memory::MemorySpace memspace)
+  {
+    assert(diag->getSize() == vec->getSize() && "Diagonal vector must be of the same size as the vector.");
+    assert(diag->getData(memspace) != nullptr && "Diagonal vector data is null!\n");
+    assert(vec->getData(memspace) != nullptr && "Vector data is null!\n");
+    using namespace ReSolve::memory;
+    switch (memspace)
+    {
+    case HOST:
+      return cpuImpl_->diagSolve(diag, vec);
+      break;
+    case DEVICE:
+      return devImpl_->diagSolve(diag, vec);
+      break;
+    }
+    return 1;
+  }
+
+  /**
+   * @brief Takes the element-wise max between two vectors.
+   *
+   * @param[in]  x        - The first vector
+   * @param[in]  y        - The second vector
+   * @param[out] out      - The output vector
+   * @param[in]  memspace - Device where the operation is computed
+   *
+   * @pre The two vectors must be the same size
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandler::max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out, memory::MemorySpace memspace)
+  {
+    assert(x->getSize() == y->getSize() && "Vectors must be the same size.");
+    assert(x->getSize() == out->getSize() && "Vectors must be the same size.");
+    assert(x->getData(memspace) != nullptr && "Vector x data is null!");
+    assert(y->getData(memspace) != nullptr && "Vector y data is null!");
+    assert(out->getData(memspace) != nullptr && "Vector out data is null!");
+    using namespace ReSolve::memory;
+    switch (memspace)
+    {
+    case HOST:
+      return cpuImpl_->max(x, y, out);
+      break;
+    case DEVICE:
+      return devImpl_->max(x, y, out);
+      break;
+    }
+    return 1;
+  }
+
+  /**
+   * @brief Computes the element-wise absolute value of a vector.
+   *
+   * @param[in]  in       - Input vector
+   * @param[out] out      - Output vector
+   * @param[in]  memspace - Device where the operation is computed
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandler::abs(/* const */ vector::Vector* in, vector::Vector* out, memory::MemorySpace memspace)
+  {
+    assert(in->getData(memspace) != nullptr && "Vector in data is null!");
+    assert(out->getData(memspace) != nullptr && "Vector out data is null!");
+    assert(in->getSize() == out->getSize() && "Vector sizes do not match!");
+
+    using namespace ReSolve::memory;
+    switch (memspace)
+    {
+    case HOST:
+      return cpuImpl_->abs(in, out);
+      break;
+    case DEVICE:
+      return devImpl_->abs(in, out);
+      break;
+    }
+    return 1;
+  }
+
+  /**
    * @brief If CUDA support is enabled in the handler.
    *
    * @return true

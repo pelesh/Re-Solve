@@ -339,4 +339,66 @@ namespace ReSolve
     vec->setDataUpdated(memory::DEVICE);
   }
 
+  /**
+   * @brief Multiplies vector by an inverse of a diagonal matrix.
+   *
+   * @param[in]  diag   - diagonal matrix stored in a vector object
+   * @param[in, out]  vec - vector to be divided
+   *
+   * @pre The diagonal vector must be of the same size as the vector.
+   * @pre vec is undivided
+   * @post vec is divided
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCuda::diagSolve(vector::Vector* diag, vector::Vector* vec)
+  {
+    real_type* diag_data = diag->getData(memory::DEVICE);
+    real_type* vec_data  = vec->getData(memory::DEVICE);
+    index_type n         = vec->getSize();
+    cuda::diagSolve(n, diag_data, vec_data);
+    vec->setDataUpdated(memory::DEVICE);
+    return 0;
+  }
+
+  /**
+   * @brief Calculate element-wise maximum between two vectors in CUDA
+   *
+   * @param[in]  x   - The first vector
+   * @param[in]  y   - The second vector
+   * @param[out] out - The output vector
+   *
+   * @pre The three vectors must be the same size
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCuda::max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out)
+  {
+    real_type* x_data   = x->getData(memory::DEVICE);
+    real_type* y_data   = y->getData(memory::DEVICE);
+    real_type* out_data = out->getData(memory::DEVICE);
+    index_type n        = y->getSize();
+    cuda::max(n, x_data, y_data, out_data);
+    out->setDataUpdated(memory::DEVICE);
+    return 0;
+  }
+
+  /**
+   * @brief Calculate element-wise absolute value of a vector in CUDA
+   *
+   * @param[in]  in  - The input vector
+   * @param[out] out - The output
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCuda::abs(/* const */ vector::Vector* in, vector::Vector* out)
+  {
+    const real_type* in_data  = in->getData(memory::DEVICE);
+    real_type*       out_data = out->getData(memory::DEVICE);
+    index_type       n        = in->getSize();
+    cuda::abs(n, in_data, out_data);
+    out->setDataUpdated(memory::DEVICE);
+    return 0;
+  }
+
 } // namespace ReSolve

@@ -316,4 +316,76 @@ namespace ReSolve
     vec->setDataUpdated(memory::HOST);
   }
 
+  /**
+   * @brief Multiplies vector by an inverse of a diagonal matrix.
+   *
+   * @param[in]  diag   - diagonal matrix stored in a vector object
+   * @param[in,out] vec - vector to be divided
+   *
+   * @pre The two vectors must be the same size
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCpu::diagSolve(vector::Vector* diag, vector::Vector* vec)
+  {
+    real_type* diag_data = diag->getData(memory::HOST);
+    real_type* vec_data  = vec->getData(memory::HOST);
+    index_type n         = vec->getSize();
+
+    for (index_type i = 0; i < n; ++i)
+    {
+      vec_data[i] /= diag_data[i];
+    }
+    vec->setDataUpdated(memory::HOST);
+    return 0;
+  }
+
+  /**
+   * @brief Take the element-wise max of two vectors.
+   * Each element of the output will be the maximum value of the corresponding elements in the input vectors.
+   *
+   * @param[in]  x   - First input vector
+   * @param[in]  y   - Second input vector
+   * @param[out] out - Output vector
+   *
+   * @pre The three vectors must be the same size
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCpu::max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out)
+  {
+    const real_type* x_data   = x->getData(memory::HOST);
+    const real_type* y_data   = y->getData(memory::HOST);
+    real_type*       out_data = out->getData(memory::HOST);
+    index_type       n        = y->getSize();
+
+    for (index_type i = 0; i < n; ++i)
+    {
+      out_data[i] = std::max(x_data[i], y_data[i]);
+    }
+    out->setDataUpdated(memory::HOST);
+    return 0;
+  }
+
+  /**
+   * @brief Take the element-wise absolute value of a vector.
+   *
+   * @param[in,out] x - Input and output vector
+   *
+   * @return 0 if successful, 1 otherwise
+   */
+  int VectorHandlerCpu::abs(/* const */ vector::Vector* in, vector::Vector* out)
+  {
+    const real_type* in_data  = in->getData(memory::HOST);
+    real_type*       out_data = out->getData(memory::HOST);
+    index_type       n        = in->getSize();
+
+    for (index_type i = 0; i < n; ++i)
+    {
+      out_data[i] = std::abs(in_data[i]);
+    }
+    out->setDataUpdated(memory::HOST);
+    return 0;
+  }
+
 } // namespace ReSolve

@@ -12,6 +12,8 @@
 #include <resolve/cuda/cudaKernels.h>
 #include <resolve/cuda/cudaVectorKernels.h>
 
+#include "resolve/Common.hpp"
+
 namespace ReSolve
 {
   namespace cuda
@@ -81,7 +83,82 @@ namespace ReSolve
         }
       }
 
+      /**
+       * @brief Multiplies vector by an inverse of a diagonal matrix.
+       *
+       * @param[in]  n       - size of the vectors
+       * @param[in]  d_val   - diagonal matrix values
+       * @param[in, out] vec - vector to be divided. Changes in place.
+       *
+       * @todo Decide how to allow user to configure grid and block sizes.
+       */
+      __global__ void diagSolve(index_type       n,
+                                const real_type* d_val,
+                                real_type*       vec)
+      {
+        // Get the index of the element to be processed
+        index_type idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // Check if the index is within bounds
+        if (idx < n)
+        {
+          // Divide the vector element by the corresponding diag value
+          vec[idx] /= d_val[idx];
+        }
+      }
+
+      /**
+       * @brief Computes the element-wise max of two vectors.
+       *
+       * @param[in]  n   - size of the vectors
+       * @param[in]  x   - First vector values
+       * @param[in]  y   - Second vector values
+       * @param[out] out - Output vector values
+       *
+       * @todo Decide how to allow user to configure grid and block sizes.
+       */
+      __global__ void max(index_type       n,
+                          const real_type* x,
+                          const real_type* y,
+                          real_type*       out)
+      {
+        // Get the index of the element to be processed
+        index_type idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // Check if the index is within bounds
+        if (idx < n)
+        {
+          // Compute maximum of elements
+          out[idx] = fmax(x[idx], y[idx]);
+        }
+      }
+
+      /**
+       * @brief Computes the element-wise absolute value of a vector.
+       *
+       * @param[in]  n   - size of the vector
+       * @param[in]  in  - Vector input
+       * @param[out] out - Vector output
+       *
+       * @todo Decide how to allow user to configure grid and block sizes.
+       */
+      __global__ void abs(index_type       n,
+                          const real_type* in,
+                          real_type*       out)
+      {
+        // Get the index of the element to be processed
+        index_type idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // Check if the index is within bounds
+        if (idx < n)
+        {
+          // Compute absolute value of element
+          out[idx] = fabs(in[idx]);
+        }
+      }
     } // namespace kernels
+
+    constexpr index_type block_size = 256;
 
     void setArrayConst(index_type n, real_type val, real_type* arr)
     {
@@ -117,6 +194,62 @@ namespace ReSolve
       int       num_blocks = (n + block_size - 1) / block_size;
       // Launch the kernel
       kernels::scale<<<num_blocks, block_size>>>(n, diag, vec);
+    }
+
+    /**
+     * @brief Wrapper that divides a vector's elements by another vector's elements
+     *
+     * @param[in]  n       - size of the vectors
+     * @param[in]  diag - diag values
+     * @param[in, out] vec - vector to be divided. Changes in place.
+     *
+     * @todo Decide how to allow user to configure grid and block sizes.
+     */
+    void diagSolve(index_type       n,
+                   const real_type* diag,
+                   real_type*       vec)
+    {
+      int num_blocks = (n + block_size - 1) / block_size;
+      // Launch the kernel
+      kernels::diagSolve<<<num_blocks, block_size>>>(n, diag, vec);
+    }
+
+    /**
+     * @brief Wrapper that computes the element-wise max of two vectors.
+     *
+     * @param[in]  n   - size of the vectors
+     * @param[in]  x   - First vector values
+     * @param[in]  y   - Second vector values
+     * @param[out] out - Output vector values
+     *
+     * @todo Decide how to allow user to configure grid and block sizes.
+     */
+    void max(index_type       n,
+             const real_type* x,
+             const real_type* y,
+             real_type*       out)
+    {
+      int num_blocks = (n + block_size - 1) / block_size;
+      // Launch the kernel
+      kernels::max<<<num_blocks, block_size>>>(n, x, y, out);
+    }
+
+    /**
+     * @brief Wrapper that computes the element-wise absolute value of a vector.
+     *
+     * @param[in]  n   - size of the vector
+     * @param[in]  in  - Vector input
+     * @param[out] out - Vector output
+     *
+     * @todo Decide how to allow user to configure grid and block sizes.
+     */
+    void abs(index_type       n,
+             const real_type* in,
+             real_type*       out)
+    {
+      int num_blocks = (n + block_size - 1) / block_size;
+      // Launch the kernel
+      kernels::abs<<<num_blocks, block_size>>>(n, in, out);
     }
   } // namespace cuda
 } // namespace ReSolve

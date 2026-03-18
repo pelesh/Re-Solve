@@ -21,6 +21,7 @@ add_library(resolve_hykkt_spgemm SHARED ${SPGEMM_SRC})
 
 target_link_libraries(
   resolve_hykkt_spgemm PRIVATE resolve_logger ${suitesparse_cholmod}
+                               resolve_matrix resolve_vector
 )
 target_include_directories(
   resolve_hykkt_spgemm PUBLIC ${SUITESPARSE_INCLUDE_DIR}

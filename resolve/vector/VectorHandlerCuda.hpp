@@ -66,6 +66,37 @@ namespace ReSolve
      */
     virtual void scal(vector::Vector* diag, vector::Vector* vec);
 
+    /**
+     * @brief Multiplies vector by an inverse of a diagonal matrix.
+     *
+     *
+     * @param[in] diag vector of size n x 1
+     * @param[in,out] vec vector of size n x 1 (this is where the result is stored)
+     *
+     * @return 0 if successful, 1 otherwise
+     */
+    virtual int diagSolve(vector::Vector* diag, vector::Vector* vec);
+
+    /**
+     * @brief max: calculate the element-wise maximum of two vectors
+     *
+     * @param[in]  x   vector of size n x 1
+     * @param[in]  y   vector of size n x 1
+     * @param[out] out output vector of size n x 1
+     *
+     * @return 0 if successful, 1 otherwise
+     */
+    virtual int max(/* const */ vector::Vector* x, /* const */ vector::Vector* y, vector::Vector* out);
+
+    /**
+     * @brief abs: calculate the element-wise absolute value of a vector
+     *
+     * @param[in,out] x vector of size n x 1 (this is where the result is stored)
+     *
+     * @return 0 if successful, 1 otherwise
+     */
+    virtual int abs(/* const */ vector::Vector* in, vector::Vector* out);
+
   private:
     MemoryHandler        mem_; ///< Device memory manager object
     LinAlgWorkspaceCUDA* workspace_;
