@@ -2,7 +2,11 @@
 
 ## HyKKT Release changes
 
-- Added classes and tests for permutation, Ruiz scaling, Cholesky factorization, and matrix multiplication and addition.
+- Added classes and tests for permutation, Ruiz scaling, Cholesky factorization, Schur complement conjugate gradient and matrix multiplication and addition.
+
+- Changed random number generation int tests to be C++ style and fixed-seed, to avoid random failures.
+
+- Added Schur Complement Conjugate Gradient class.
 
 ## Changes to Re::Solve since release 0.99.2
 
@@ -22,6 +26,9 @@
 
 - Improved coding guidelines for developers on floating point conventions.
 
+- Added `SchurComplementConjugateGradient` with CPU implementation.
+
+- Created `Matrix`, a parent class for all matrix classes.
 - Removed unnecessary device synchronization and added where needed (HIP only calls).
 
 - Changed variable and function names to be more explanatory.

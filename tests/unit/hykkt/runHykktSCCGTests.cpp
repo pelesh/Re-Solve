@@ -1,8 +1,6 @@
 /**
- * @file runHykktCholeskyTests.hpp
- * @author Shaked Regev (regevs@ornl.gov)
- * @author Adham Ibrahim (ibrahimas@ornl.gov)
- * @brief Tests for class hykkt::CholeskySolver
+ * @file runHykktSCCGTests.hpp
+ * @brief Tests for class hykkt::SchurComplementConjugateGradient
  *
  */
 #include <fstream>
@@ -10,8 +8,18 @@
 #include <random>
 #include <string>
 
-#include "resolve/Common.hpp"
-#include "tests/unit/hykkt/HykktCholeskyTests.hpp"
+#include <resolve/matrix/MatrixHandler.hpp>
+#include <resolve/vector/VectorHandler.hpp>
+#include <resolve/workspace/LinAlgWorkspaceCpu.hpp>
+#ifdef RESOLVE_USE_CUDA
+#include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
+#endif
+#ifdef RESOLVE_USE_HIP
+#include <resolve/workspace/LinAlgWorkspaceHIP.hpp>
+#endif
+
+#include "HykktSCCGTests.hpp"
+#include <resolve/vector/Vector.hpp>
 
 /**
  * @brief Run tests with a given backend
@@ -26,22 +34,12 @@ void runTests(const std::string& backend, ReSolve::memory::MemorySpace memspace,
 
   WorkspaceType workspace;
   workspace.initializeHandles();
-  ReSolve::MatrixHandler             handler(&workspace);
-  std::mt19937                       generator(ReSolve::constants::SEED); // set random seed for reproducibility
-  ReSolve::tests::HykktCholeskyTests test(memspace, handler, generator);
+  ReSolve::MatrixHandler                                     matrix_handler(&workspace);
+  ReSolve::VectorHandler                                     vector_handler(&workspace);
+  std::mt19937                                               generator(ReSolve::constants::SEED);
+  ReSolve::tests::HykktSchurComplementConjugateGradientTests test(memspace, matrix_handler, vector_handler, generator);
 
-  result += test.minimalCorrectness();
-  handler.setValuesChanged(true, memspace);
-  workspace.resetLinAlgWorkspace(); // reset is necessary due to different sparsity.
-
-  for (int size : {3, 10, 100, 1000})
-  {
-    result += test.randomized(size);
-    handler.setValuesChanged(true, memspace);
-    workspace.resetLinAlgWorkspace();
-  }
-
-  result += test.randomizedReuseSparsityPattern(3, 10);
+  result += test.SCCGTest();
 
   std::cout << "\n";
 }
