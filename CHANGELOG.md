@@ -2,7 +2,11 @@
 
 ## HyKKT Release changes
 
-- Added classes and tests for permutation, Ruiz scaling, Cholesky factorization, and matrix multiplication and addition.
+- Added classes and tests for permutation, Ruiz scaling, Cholesky factorization, Schur complement conjugate gradient and matrix multiplication and addition.
+
+- Changed random number generation int tests to be C++ style and fixed-seed, to avoid random failures.
+
+- Added Schur Complement Conjugate Gradient class.
 
 ## Changes to Re::Solve since release 0.99.2
 
@@ -19,6 +23,8 @@
 - Made Vector::copyToExternal able to copy from device to host and vice versa.
 
 - Added `diagSolve`, `max`, and `abs` vector operations.
+
+- Added `allocateWithExternalSparsityPattern` for sparse matrices.
 
 - Added initial guess support for FGMRES and randomized FGMRES iterative solvers.
 
