@@ -69,7 +69,6 @@ namespace ReSolve
                  const std::string& r_y_file_name,
                  const std::string& r_yd_file_name,
                  real_type          gamma)
-
       {
         constexpr double tol = 1e-2;
 
@@ -90,6 +89,10 @@ namespace ReSolve
         matrix::Csr* J_d = io::createCsrFromFile(J_d_file, false);
         if (memspace_ == memory::DEVICE)
         {
+          H->allocateMatrixData(memory::DEVICE);
+          D_s->allocateMatrixData(memory::DEVICE);
+          J->allocateMatrixData(memory::DEVICE);
+          J_d->allocateMatrixData(memory::DEVICE);
           H->syncData(memory::DEVICE);
           D_s->syncData(memory::DEVICE);
           J->syncData(memory::DEVICE);
@@ -103,6 +106,10 @@ namespace ReSolve
         vector::Vector* r_yd = io::createVectorFromFile(r_yd_file);
         if (memspace_ == memory::DEVICE)
         {
+          r_x->allocate(memory::DEVICE);
+          r_s->allocate(memory::DEVICE);
+          r_y->allocate(memory::DEVICE);
+          r_yd->allocate(memory::DEVICE);
           r_x->syncData(memory::DEVICE);
           r_s->syncData(memory::DEVICE);
           r_y->syncData(memory::DEVICE);
@@ -114,10 +121,10 @@ namespace ReSolve
         vector::Vector* s   = new vector::Vector(m_d);
         vector::Vector* y   = new vector::Vector(m_c);
         vector::Vector* y_d = new vector::Vector(m_d);
-        x->allocate(memspace_);
-        s->allocate(memspace_);
-        y->allocate(memspace_);
-        y_d->allocate(memspace_);
+        x->allocateAll(memspace_);
+        s->allocateAll(memspace_);
+        y->allocateAll(memspace_);
+        y_d->allocateAll(memspace_);
 
         hykkt::HyKKTSolver hykktSolver(n_x, m_d, m_c, memspace_);
         hykktSolver.setMatrixBlocks(H, D_s, J, J_d);

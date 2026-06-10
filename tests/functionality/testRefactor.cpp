@@ -135,6 +135,7 @@ int runTest(int argc, char* argv[], std::string& solver_name)
     return -1;
   }
   ReSolve::matrix::Csr* A = ReSolve::io::createCsrFromFile(mat1);
+  A->allocateMatrixData(ReSolve::memory::DEVICE);
   A->syncData(ReSolve::memory::DEVICE);
   mat1.close();
 
@@ -147,7 +148,9 @@ int runTest(int argc, char* argv[], std::string& solver_name)
   }
   real_type*  rhs = ReSolve::io::createArrayFromFile(rhs1_file);
   vector_type vec_rhs(A->getNumRows());
+  vec_rhs.allocate(ReSolve::memory::HOST);
   vec_rhs.copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::HOST);
+  vec_rhs.allocate(ReSolve::memory::DEVICE);
   vec_rhs.syncData(ReSolve::memory::DEVICE);
   rhs1_file.close();
 
@@ -171,15 +174,18 @@ int runTest(int argc, char* argv[], std::string& solver_name)
   matrix_type* U = KLU.getUFactor();
   index_type*  P = KLU.getPOrdering();
   index_type*  Q = KLU.getQOrdering();
+  L->allocateMatrixData(ReSolve::memory::DEVICE);
+  U->allocateMatrixData(ReSolve::memory::DEVICE);
 
   status = Rf.setup(A, L, U, P, Q, &vec_rhs);
   error_sum += status;
 
-  // Refactorize (on device where available)
+  // Refactorize
   status = Rf.refactorize();
   error_sum += status;
 
-  // Solve system (on device where available)
+  // Solve system
+  vec_x.syncData(ReSolve::memory::DEVICE);
   status = Rf.solve(&vec_rhs, &vec_x);
   error_sum += status;
 
@@ -200,6 +206,7 @@ int runTest(int argc, char* argv[], std::string& solver_name)
   }
 
   // Compute error norms for the system
+  vec_x.syncData(ReSolve::memory::HOST);
   helper.setSystem(A, &vec_rhs, &vec_x);
 
   // Print result summary and check solution
@@ -231,6 +238,7 @@ int runTest(int argc, char* argv[], std::string& solver_name)
   }
   ReSolve::io::updateArrayFromFile(rhs2_file, &rhs);
   rhs2_file.close();
+  vec_rhs.allocate(ReSolve::memory::DEVICE);
   vec_rhs.copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
 
   // Refactorize second matrix
@@ -255,6 +263,11 @@ int runTest(int argc, char* argv[], std::string& solver_name)
   }
 
   // Recompute error norms for the second system and print summary
+  vec_rhs.syncData(ReSolve::memory::HOST);
+  if (!vec_x.isUpdated(ReSolve::memory::HOST))
+  {
+    vec_x.syncData(ReSolve::memory::HOST);
+  }
   helper.resetSystem(A, &vec_rhs, &vec_x);
 
   std::cout << "\nResults (second matrix): \n\n";

@@ -245,6 +245,27 @@ namespace ReSolve
   }
 
   /**
+   * @brief If memspace is HOST, allocate on HOST. If it is DEVICE, alloate
+   * on both HOST and DEVICE.
+   *
+   * @param[in] memspace   - Memory space of the data to be allocated
+   *
+   */
+  int matrix::Sparse::allocateAll(memory::MemorySpace memspace)
+  {
+    using namespace ReSolve::memory;
+    switch (memspace)
+    {
+    case HOST:
+      return this->allocateMatrixData(memory::HOST);
+    case DEVICE:
+      return this->allocateMatrixData(memory::HOST) | this->allocateMatrixData(memory::DEVICE);
+    default:
+      return -1;
+    }
+  }
+
+  /**
    * @brief Allocate the values array and set pointers to external arrays
    * containing row and column data.
    *

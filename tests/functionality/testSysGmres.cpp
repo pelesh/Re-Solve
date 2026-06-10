@@ -142,10 +142,9 @@ int test(int argc, char* argv[])
 
   // Create solution vector
   vector_type vec_x(A->getNumRows());
-  vec_x.allocate(ReSolve::memory::HOST);
 
   // Set the initial guess to 0
-  vec_x.allocate(memspace);
+  vec_x.allocateAll(memspace);
   vec_x.setToZero(memspace);
 
   // Set solver options
@@ -186,8 +185,7 @@ int test(int argc, char* argv[])
 
   // Create a large initial guess with a larger residual than the zero vector.
   vector_type bad_guess_x(A->getNumRows());
-  bad_guess_x.allocate(ReSolve::memory::HOST);
-  bad_guess_x.allocate(memspace);
+  bad_guess_x.allocateAll(memspace);
   bad_guess_x.setToConst(1.0e6, memspace);
 
   ReSolve::SystemSolver bad_guess_solver(&workspace, "none", "none", method, "ilu0", "none");
@@ -238,6 +236,7 @@ int test(int argc, char* argv[])
 
   // Use a scaled converged solution as a nonzero initial guess.
   vector_type vec_x_guess(vec_x.getSize());
+  vec_x_guess.allocate(memspace);
   vec_x_guess.copyFromExternal(&vec_x, memspace, memspace);
   vector_handler.scal(0.9, &vec_x_guess, memspace);
 
@@ -282,6 +281,10 @@ int test(int argc, char* argv[])
   }
 
   // Check results and print summary
+  if (memspace == ReSolve::memory::DEVICE)
+  {
+    vec_x.syncData(ReSolve::memory::HOST);
+  }
   helper.setSystem(A, vec_rhs, &vec_x);
 
   std::cout << std::defaultfloat
@@ -403,8 +406,7 @@ std::string headerInfo(const std::string& method,
 ReSolve::vector::Vector* generateRhs(const index_type N, ReSolve::memory::MemorySpace memspace)
 {
   vector_type* vec_rhs = new vector_type(N);
-  vec_rhs->allocate(ReSolve::memory::HOST);
-  vec_rhs->allocate(memspace);
+  vec_rhs->allocateAll(memspace);
 
   real_type* data = vec_rhs->getData(ReSolve::memory::HOST);
   for (int i = 0; i < N; ++i)
@@ -447,7 +449,7 @@ ReSolve::matrix::Csr* generateMatrix(const index_type N, ReSolve::memory::Memory
 
   // Allocate NxN CSR matrix with NNZ nonzeros
   ReSolve::matrix::Csr* A = new ReSolve::matrix::Csr(N, N, NNZ);
-  A->allocateMatrixData(ReSolve::memory::HOST);
+  A->allocateAll(memspace);
 
   index_type* rowptr = A->getRowData(ReSolve::memory::HOST);
   index_type* colidx = A->getColData(ReSolve::memory::HOST);

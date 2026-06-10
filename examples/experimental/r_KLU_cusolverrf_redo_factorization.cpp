@@ -117,6 +117,7 @@ int main(int argc, char* argv[])
       ReSolve::io::updateArrayFromFile(rhs_file, &rhs);
     }
     // Copy matrix data to device
+    A->allocateMatrixData(ReSolve::memory::DEVICE);
     A->syncData(ReSolve::memory::DEVICE);
 
     std::cout << "Finished reading the matrix and rhs, size: " << A->getNumRows() << " x " << A->getNumColumns()
@@ -129,10 +130,12 @@ int main(int argc, char* argv[])
     // Update host and device data.
     if (i < 2)
     {
+      vec_rhs->allocate(ReSolve::memory::HOST);
       vec_rhs->copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::HOST);
     }
     else
     {
+      vec_rhs->allocate(ReSolve::memory::DEVICE);
       vec_rhs->copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
     }
     std::cout << "CSR matrix loaded. Expanded NNZ: " << A->getNnz() << std::endl;
@@ -182,6 +185,7 @@ int main(int argc, char* argv[])
     }
 
     // Make sure vec_r is properly initialized before using it.
+    vec_r->allocate(ReSolve::memory::DEVICE);
     vec_r->copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
 
     matrix_handler->setValuesChanged(true, ReSolve::memory::DEVICE);

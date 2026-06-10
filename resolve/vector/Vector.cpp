@@ -96,6 +96,68 @@ namespace ReSolve
     }
 
     /**
+     * @brief Get whether the data of a vector is updated in the given memory space.
+     *
+     * @param[in] memspace - Memory space (HOST or DEVICE)
+     *
+     * @return Whether data in memspace is updated.
+     */
+    bool Vector::isUpdated(memory::MemorySpace memspace) const
+    {
+      switch (memspace)
+      {
+      case ReSolve::memory::HOST:
+        return cpu_updated_[0];
+      case ReSolve::memory::DEVICE:
+        return gpu_updated_[0];
+      default:
+        return false;
+      }
+    }
+
+    /**
+     * @brief Get whether the data of a specific vector in a multivector is updated
+     * in the given memory space.
+     *
+     * @param[in] memspace - Memory space (HOST or DEVICE)
+     * @param[in] j - Index of vector in multivector to check.
+     *
+     * @return Whether data in memspace is updated.
+     */
+    bool Vector::isUpdated(index_type j, memory::MemorySpace memspace) const
+    {
+      switch (memspace)
+      {
+      case ReSolve::memory::HOST:
+        return cpu_updated_[j];
+      case ReSolve::memory::DEVICE:
+        return gpu_updated_[j];
+      default:
+        return false;
+      }
+    }
+
+    /**
+     * @brief Get whether the data of a vector is allocated in the given memory space.
+     *
+     * @param[in] memspace - Memory space (HOST or DEVICE)
+     *
+     * @return Whether data in memspace is allocated.
+     */
+    bool Vector::isAllocated(memory::MemorySpace memspace) const
+    {
+      switch (memspace)
+      {
+      case ReSolve::memory::HOST:
+        return h_data_ != nullptr;
+      case ReSolve::memory::DEVICE:
+        return d_data_ != nullptr;
+      default:
+        return false;
+      }
+    }
+
+    /**
      * @brief Set the vector data pointer (HOST or DEVICE) to an external data.
      *
      * @param[in] data     - Pointer to data
@@ -220,8 +282,6 @@ namespace ReSolve
     /**
      * @brief Copy vector data from input array.
      *
-     * This function allocates (if necessary) and copies the data.
-     *
      * @param[in] data        - Data that is to be copied
      * @param[in] memspaceIn  - Memory space of the incoming data (HOST or DEVICE)
      * @param[in] memspaceOut - Memory space the data will be copied to (HOST or DEVICE)
@@ -250,15 +310,13 @@ namespace ReSolve
 
       if ((memspaceOut == memory::HOST) && (h_data_ == nullptr))
       {
-        // allocate first
-        h_data_        = new real_type[n_capacity_ * k_];
-        owns_cpu_data_ = true;
+        out::error() << "Trying to copy from external vector, but destination (host) is not allocated!\n";
+        return -1;
       }
-      if ((memspaceOut == memory::DEVICE) && (d_data_ == nullptr))
+      else if ((memspaceOut == memory::DEVICE) && (d_data_ == nullptr))
       {
-        // allocate first
-        mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
-        owns_gpu_data_ = true;
+        out::error() << "Trying to copy from external vector, but destination (device) is not allocated!\n";
+        return -1;
       }
 
       switch (control)
@@ -296,74 +354,15 @@ namespace ReSolve
      *
      * @return pointer to the vector data (HOST or DEVICE). In case of multivectors,
      * vectors are stored column-wise.
-     *
-     * @note This function gives you access to the pointer, not to a copy.
-     * If you change the values using the pointer, the vector values will
-     * change too. Make sure to use setDataUpdated function to set the update
-     * flags correctly after changing the values.
      */
     real_type* Vector::getData(memory::MemorySpace memspace)
     {
-      using memory::DEVICE;
-      using memory::HOST;
-
-      switch (memspace)
-      {
-      case HOST:
-        if ((cpu_updated_[0] == false) && (gpu_updated_[0] == true))
-        {
-          syncData(memspace);
-        }
-        return h_data_;
-      case DEVICE:
-        if ((gpu_updated_[0] == false) && (cpu_updated_[0] == true))
-        {
-          syncData(memspace);
-        }
-        return d_data_;
-      default:
-        return nullptr;
-      }
+      return getData(0, memspace);
     }
 
     /**
-     * @brief get a pointer to HOST or DEVICE vector data.
-     *
-     * @param[in] memspace  - Memory space of the pointer (HOST or DEVICE)
-     *
-     * @return pointer to the vector data (HOST or DEVICE). In case of multivectors,
-     * vectors are stored column-wise.
-     */
-    const real_type* Vector::getData(memory::MemorySpace memspace) const
-    {
-      using memory::DEVICE;
-      using memory::HOST;
-
-      switch (memspace)
-      {
-      case HOST:
-        if (cpu_updated_[0] == false)
-        {
-          out::error() << "Trying to get data on the host, but host data is out of date!\n"
-                       << "Use syncData function to sync host data with the device data!\n";
-          return nullptr;
-        }
-        return h_data_;
-      case DEVICE:
-        if (gpu_updated_[0] == false)
-        {
-          out::error() << "Trying to get data on the device, but device data is out of date!\n"
-                       << "Use syncData function to sync device data with the host data!\n";
-          return nullptr;
-        }
-        return d_data_;
-      default:
-        return nullptr;
-      }
-    }
-
-    /**
-     * @brief get a pointer to HOST or DEVICE data of a particular vector in a multivector.
+     * @brief get a pointer to HOST or DEVICE data of a particular
+     * vector in a multivector.
      *
      * @param[in] j         - Index of a vector in multivector
      * @param[in] memspace  - Memory space of the pointer (HOST or DEVICE)
@@ -372,10 +371,6 @@ namespace ReSolve
      *
      * @pre `j` < `k_` i.e, `j` is smaller than the total number of vectors in multivector.
      *
-     * @note This function gives you access to the pointer, not to a copy.
-     * If you change the values using the pointer, the vector values will
-     * change too. Make sure to use setDataUpdated function to set the update
-     * flags correctly after changing the values.
      */
     real_type* Vector::getData(index_type j, memory::MemorySpace memspace)
     {
@@ -392,20 +387,24 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        if ((cpu_updated_[j] == false) && (gpu_updated_[j] == true))
-        {
-          syncData(j, memspace);
-        }
         return &h_data_[j * n_size_];
       case DEVICE:
-        if ((gpu_updated_[j] == false) && (cpu_updated_[j] == true))
-        {
-          syncData(j, memspace);
-        }
         return &d_data_[j * n_size_];
       default:
         return nullptr;
       }
+    }
+
+    /**
+     * @brief get a const pointer to HOST or DEVICE vector data.
+     *
+     * @param[in] memspace  - Memory space of the pointer (HOST or DEVICE)
+     *
+     * @return pointer to the vector data (HOST or DEVICE).
+     */
+    const real_type* Vector::getData(memory::MemorySpace memspace) const
+    {
+      return getData(0, memspace);
     }
 
     /**
@@ -629,33 +628,70 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        delete[] h_data_;
+        if (h_data_)
+        {
+          out::error() << "Trying to allocate vector host data, but vector host data has already been allocated!\n";
+          return 1;
+        }
         h_data_        = new real_type[n_capacity_ * k_];
         owns_cpu_data_ = true;
-        if (gpu_updated_[0])
+        // Set updated flags for each vector in multivector
+        for (index_type j = 0; j < k_; j++)
         {
-          cpu_updated_[0] = false;
-        }
-        else
-        {
-          cpu_updated_[0] = true;
+          if (gpu_updated_[j])
+          {
+            cpu_updated_[j] = false;
+          }
+          else
+          {
+            cpu_updated_[j] = true;
+          }
         }
         break;
       case DEVICE:
-        mem_.deleteOnDevice(d_data_);
+        if (d_data_)
+        {
+          out::error() << "Trying to allocate vector device data, but vector device data has already been allocated!\n";
+          return 1;
+        }
         mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
         owns_gpu_data_ = true;
-        if (cpu_updated_[0])
+        // Set updated flags for each vector in multivector
+        for (index_type j = 0; j < k_; j++)
         {
-          gpu_updated_[0] = false;
-        }
-        else
-        {
-          gpu_updated_[0] = true;
+          if (cpu_updated_[j])
+          {
+            gpu_updated_[j] = false;
+          }
+          else
+          {
+            gpu_updated_[j] = true;
+          }
         }
         break;
       }
       return 0;
+    }
+
+    /**
+     * @brief If memspace is HOST, allocate on HOST. If it is DEVICE, alloate
+     * on both HOST and DEVICE.
+     *
+     * @param[in] memspace   - Memory space of the data to be allocated
+     *
+     */
+    int Vector::allocateAll(memory::MemorySpace memspace)
+    {
+      using namespace ReSolve::memory;
+      switch (memspace)
+      {
+      case HOST:
+        return allocate(memory::HOST);
+      case DEVICE:
+        return allocate(memory::HOST) | allocate(memory::DEVICE);
+      default:
+        return -1;
+      }
     }
 
     /**
@@ -670,21 +706,11 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        if (h_data_ == nullptr)
-        {
-          h_data_        = new real_type[n_capacity_ * k_];
-          owns_cpu_data_ = true;
-        }
         mem_.setZeroArrayOnHost(h_data_, n_capacity_ * k_);
         setHostUpdated(true);
         setDeviceUpdated(false);
         break;
       case DEVICE:
-        if (d_data_ == nullptr)
-        {
-          mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
-          owns_gpu_data_ = true;
-        }
         mem_.setZeroArrayOnDevice(d_data_, n_capacity_ * k_);
         setHostUpdated(false);
         setDeviceUpdated(true);
@@ -707,21 +733,11 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        if (h_data_ == nullptr)
-        {
-          h_data_        = new real_type[n_capacity_ * k_];
-          owns_cpu_data_ = true;
-        }
         mem_.setZeroArrayOnHost(&h_data_[j * n_size_], n_size_);
         cpu_updated_[j] = true;
         gpu_updated_[j] = false;
         break;
       case DEVICE:
-        if (d_data_ == nullptr)
-        {
-          mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
-          owns_gpu_data_ = true;
-        }
         // TODO: We should not need to access raw data in this class
         mem_.setZeroArrayOnDevice(&d_data_[j * n_size_], n_size_);
         cpu_updated_[j] = false;
@@ -746,21 +762,11 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        if (h_data_ == nullptr)
-        {
-          h_data_        = new real_type[n_capacity_ * k_];
-          owns_cpu_data_ = true;
-        }
         mem_.setArrayToConstOnHost(h_data_, C, n_size_ * k_);
         setHostUpdated(true);
         setDeviceUpdated(false);
         break;
       case DEVICE:
-        if (d_data_ == nullptr)
-        {
-          mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
-          owns_gpu_data_ = true;
-        }
         mem_.setArrayToConstOnDevice(d_data_, C, n_size_ * k_);
         setHostUpdated(false);
         setDeviceUpdated(true);
@@ -784,21 +790,11 @@ namespace ReSolve
       switch (memspace)
       {
       case HOST:
-        if (h_data_ == nullptr)
-        {
-          h_data_        = new real_type[n_capacity_ * k_];
-          owns_cpu_data_ = true;
-        }
         mem_.setArrayToConstOnHost(&h_data_[n_size_ * j], C, n_size_);
         cpu_updated_[j] = true;
         gpu_updated_[j] = false;
         break;
       case DEVICE:
-        if (d_data_ == nullptr)
-        {
-          mem_.allocateArrayOnDevice(&d_data_, n_capacity_ * k_);
-          owns_gpu_data_ = true;
-        }
         mem_.setArrayToConstOnDevice(&d_data_[n_size_ * j], C, n_size_);
         cpu_updated_[j] = false;
         gpu_updated_[j] = true;

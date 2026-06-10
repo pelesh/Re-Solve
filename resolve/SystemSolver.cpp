@@ -453,6 +453,8 @@ namespace ReSolve
 
     L_ = factorizationSolver_->getLFactor();
     U_ = factorizationSolver_->getUFactor();
+    L_->allocateMatrixData(memory::DEVICE);
+    U_->allocateMatrixData(memory::DEVICE);
     P_ = factorizationSolver_->getPOrdering();
     Q_ = factorizationSolver_->getQOrdering();
 
@@ -862,6 +864,7 @@ namespace ReSolve
       else
       {
         resVector_->copyFromExternal(rhs, memory::HOST, memory::DEVICE);
+        resVector_->syncData(memory::HOST);
         norm_b = std::sqrt(vectorHandler_->dot(resVector_, resVector_, memory::HOST));
         // ms = memory::HOST;
       }

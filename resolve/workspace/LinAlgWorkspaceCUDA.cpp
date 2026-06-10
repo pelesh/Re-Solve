@@ -1,7 +1,12 @@
+#include <cassert>
+
+#include <resolve/utilities/logger/Logger.hpp>
 #include <resolve/workspace/LinAlgWorkspaceCUDA.hpp>
 
 namespace ReSolve
 {
+  using out = io::Logger;
+
   LinAlgWorkspaceCUDA::LinAlgWorkspaceCUDA()
   {
     handle_cusolversp_         = nullptr;
@@ -88,15 +93,16 @@ namespace ReSolve
     return transpose_workspace_;
   }
 
-  void LinAlgWorkspaceCUDA::setTransposeBufferWorkspace(size_t bufferSize)
+  int LinAlgWorkspaceCUDA::setTransposeBufferWorkspace(size_t bufferSize)
   {
     if (transpose_workspace_ready_)
     {
-      mem_.deleteOnDevice(transpose_workspace_);
+      out::error() << "Transpose workspace already set!\n";
+      return 1;
     }
     mem_.allocateBufferOnDevice(&transpose_workspace_, bufferSize);
     transpose_workspace_ready_ = true;
-    return;
+    return 0;
   }
 
   bool LinAlgWorkspaceCUDA::isTransposeBufferAllocated()

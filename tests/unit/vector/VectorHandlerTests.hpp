@@ -62,6 +62,7 @@ namespace ReSolve
         {
           data[i] = 0.1 * (real_type) i;
         }
+        x.allocate(memspace_);
         x.copyFromExternal(data, memory::HOST, memspace_);
 
         real_type result = handler_.amax(&x, memspace_);
@@ -249,7 +250,7 @@ namespace ReSolve
         // diag[i] = i, vec[i] = 3.0
         // expected result vec[i] = i * 3.0
         diag.allocate(memspace_);
-        vec.allocate(memspace_);
+        vec.allocateAll(memspace_);
 
         vec.setToConst(3.0, memspace_);
 
@@ -332,8 +333,8 @@ namespace ReSolve
         vector::Vector z(N);
 
         x.allocate(memspace_);
-        y.allocate(memspace_);
-        z.allocate(memspace_);
+        y.allocateAll(memspace_);
+        z.allocateAll(memspace_);
 
         auto x_data = std::unique_ptr<real_type[]>(new real_type[N]);
         auto y_data = std::unique_ptr<real_type[]>(new real_type[N]);
@@ -359,6 +360,7 @@ namespace ReSolve
         if (memspace_ == memory::DEVICE)
         {
           y.syncData(memory::HOST);
+          z.syncData(memory::HOST);
         }
 
         for (index_type i = 0; i < N; ++i)
@@ -390,8 +392,8 @@ namespace ReSolve
         vector::Vector x(N);
         vector::Vector y(N);
 
-        x.allocate(memspace_);
-        y.allocate(memspace_);
+        x.allocateAll(memspace_);
+        y.allocateAll(memspace_);
 
         auto x_data = std::unique_ptr<real_type[]>(new real_type[N]);
         for (size_t i = 0; i < static_cast<size_t>(N); ++i)

@@ -60,6 +60,7 @@ namespace ReSolve
         ReSolve::matrix::Csr*           A = createCsrMatrix(0, "cpu");
 
         ReSolve::vector::Vector rhs(A->getNumRows());
+        rhs.allocate(memory::HOST);
         rhs.setToConst(constants::ONE, memory::HOST);
 
         ReSolve::vector::Vector x(A->getNumRows());
@@ -167,6 +168,7 @@ namespace ReSolve
 
         if ((memspace == "cuda") || (memspace == "hip"))
         {
+          A->allocateMatrixData(memory::DEVICE);
           A->syncData(memory::DEVICE);
         }
 
@@ -348,6 +350,7 @@ namespace ReSolve
         bool status = true;
         if (memspace != "cpu")
         {
+          x.allocate(memory::DEVICE);
           x.syncData(memory::HOST);
         }
 

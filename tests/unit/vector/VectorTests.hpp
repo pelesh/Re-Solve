@@ -177,14 +177,17 @@ namespace ReSolve
         }
 
         // array -> memspace
+        x.allocate(memspace_);
         x.copyFromExternal(data, memory::HOST, memspace_);
 
         // memspace -> memspace
         vector::Vector y(N);
+        y.allocate(memspace_);
         y.copyFromExternal(&x, memspace_, memspace_);
 
         // memspace -> host
         vector::Vector z(N);
+        z.allocate(memory::HOST);
         z.copyFromExternal(&y, memspace_, memory::HOST);
 
         const real_type* z_data = z.getData(memory::HOST);
@@ -291,6 +294,7 @@ namespace ReSolve
 
         vector::Vector x(vector_size, number_vectors);
 
+        x.allocate(memspace_);
         x.setToZero(memspace_);
         success *= verifyAnswer(x, ZERO);
 
@@ -336,6 +340,8 @@ namespace ReSolve
         index_type number_vectors = 3;
 
         vector::Vector x(vector_size, number_vectors);
+        x.allocate(memory::HOST);
+        x.allocate(memory::DEVICE);
 
         // Set all vectors in x on device to ones
         x.setToConst(ONE, memspace_);

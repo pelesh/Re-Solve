@@ -306,7 +306,9 @@ int sysRefactor(int argc, char* argv[])
     // Ensure matrix data is synced to the device before any GPU operations
     if (hw_backend == "CUDA" || hw_backend == "HIP")
     {
+      A->allocateMatrixData(memory::DEVICE);
       A->syncData(memory::DEVICE);
+      vec_rhs->allocate(memory::DEVICE);
       vec_rhs->syncData(memory::DEVICE);
     }
 
@@ -315,7 +317,10 @@ int sysRefactor(int argc, char* argv[])
 
     double solve_time_ms = 0.0;
 
-    syncDevice(hw_backend);
+    if (hw_backend == "CUDA" || hw_backend == "HIP")
+    {
+      syncDevice(hw_backend);
+    }
     auto solve_start = std::chrono::high_resolution_clock::now();
 
     // Now call direct solver
@@ -348,7 +353,10 @@ int sysRefactor(int argc, char* argv[])
     }
 
     status = solver.solve(vec_rhs, vec_x);
-    syncDevice(hw_backend);
+    if (hw_backend == "CUDA" || hw_backend == "HIP")
+    {
+      syncDevice(hw_backend);
+    }
     auto solve_end = std::chrono::high_resolution_clock::now();
     solve_time_ms  = std::chrono::duration<double, std::milli>(solve_end - solve_start).count();
     std::cout << "Triangular solve status: " << status << std::endl;

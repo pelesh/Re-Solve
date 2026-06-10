@@ -134,7 +134,8 @@ public:
 
   /**
    * @brief Set the new linear system together with its computed solution
-   * and compute solution error and residual norms.
+   * and compute solution error and residual norms. All input matrix and
+   * vector data arrays must be updated on the current memory space.
    *
    * This will set the new system A*x = r and compute related error norms.
    *
@@ -147,10 +148,11 @@ public:
                  ReSolve::vector::Vector* x)
   {
     assert((res_ == nullptr) && (x_true_ == nullptr));
-    A_      = A;
-    r_      = r;
-    x_      = x;
-    res_    = new ReSolve::vector::Vector(A->getNumRows());
+    A_   = A;
+    r_   = r;
+    x_   = x;
+    res_ = new ReSolve::vector::Vector(A->getNumRows());
+    res_->allocateAll(memspace_);
     x_true_ = new ReSolve::vector::Vector(A->getNumRows());
     setSolutionVector();
     computeNorms();
@@ -160,7 +162,8 @@ public:
    * @brief Set the new linear system together with its computed solution
    * and compute solution error and residual norms.
    *
-   * This is to be used after values in A and r are updated.
+   * This is to be used after values in A and r are updated and synced on
+   * the host.
    *
    * @todo This method probably does not need any input parameters.
    *

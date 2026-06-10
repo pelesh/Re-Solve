@@ -157,9 +157,10 @@ static int runTest(int argc, char* argv[], std::string backend)
     return -1;
   }
   ReSolve::matrix::Csr* A = ReSolve::io::createCsrFromFile(mat1, true);
-  if (memspace != memory::HOST)
+  if (memspace == memory::DEVICE)
   {
-    A->syncData(memspace);
+    A->allocateMatrixData(memory::DEVICE);
+    A->syncData(memory::DEVICE);
   }
   mat1.close();
 
@@ -175,15 +176,12 @@ static int runTest(int argc, char* argv[], std::string backend)
 
   // Create and set residual vector
   vector_type vec_rhs = (A->getNumRows());
+  vec_rhs.allocate(ReSolve::memory::HOST);
   vec_rhs.copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::HOST);
 
   // Create and allocate solution vector
   vector_type vec_x(A->getNumRows());
-  if (memspace != memory::HOST)
-  {
-    vec_x.allocate(ReSolve::memory::HOST); // for KLU
-  }
-  vec_x.allocate(memspace);
+  vec_x.allocateAll(memspace);
 
   // Add system matrix to the solver
   status = solver.setMatrix(A);
@@ -200,6 +198,11 @@ static int runTest(int argc, char* argv[], std::string backend)
   error_sum += status;
 
   // Compute error norms for the system
+  if (memspace == ReSolve::memory::DEVICE)
+  {
+    vec_x.syncData(ReSolve::memory::DEVICE);
+    vec_rhs.syncData(ReSolve::memory::DEVICE);
+  }
   helper.setSystem(A, &vec_rhs, &vec_x);
 
   // Print result summary and check solution
@@ -243,6 +246,10 @@ static int runTest(int argc, char* argv[], std::string backend)
   ReSolve::io::updateArrayFromFile(rhs2_file, &rhs);
   rhs2_file.close();
 
+  if (memspace == ReSolve::memory::DEVICE)
+  {
+    vec_rhs.copyFromExternal(rhs, ReSolve::memory::HOST, ReSolve::memory::DEVICE);
+  }
   vec_rhs.copyFromExternal(rhs, ReSolve::memory::HOST, memspace);
 
   // Refactorize matrix
@@ -254,6 +261,14 @@ static int runTest(int argc, char* argv[], std::string backend)
   error_sum += status;
 
   // Compute error norms for the system
+  if (memspace == ReSolve::memory::DEVICE)
+  {
+    if (!vec_rhs.isUpdated(ReSolve::memory::HOST))
+    {
+      vec_rhs.syncData(ReSolve::memory::HOST);
+    }
+    vec_x.syncData(ReSolve::memory::HOST);
+  }
   helper.resetSystem(A, &vec_rhs, &vec_x);
 
   // Print result summary and check solution
