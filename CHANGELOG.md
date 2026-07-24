@@ -48,6 +48,7 @@
 
 - Fixed GPU refactorization allocation and synchronization errors, uninitialized GMRES example initial guesses, and CUDA ILU0 failures on stored numerical zero pivots.
 
+- Added cuDSS implementation of Cholesky solver (HyKKT) and refactorization
 - Optimized CGS2 coefficient accumulation in `GramSchmidt` by eliminating an unnecessary device-to-host synchronization.
 
 ## Changes to Re::Solve in release 0.99.2

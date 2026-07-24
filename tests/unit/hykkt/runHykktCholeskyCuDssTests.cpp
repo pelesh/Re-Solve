@@ -1,0 +1,55 @@
+/**
+ * @file runHykktCholeskyCuDssTests.hpp
+ * @author Shaked Regev (regevs@ornl.gov)
+ * @author Andrew Xu (xua1@ornl.gov)
+ * @brief Tests for class hykkt::CholeskySolver
+ *
+ */
+#include <fstream>
+#include <iostream>
+#include <random>
+#include <string>
+
+#include "resolve/Common.hpp"
+#include "tests/unit/hykkt/HykktCholeskyCuDssTests.hpp"
+
+/**
+ * @brief Run tests with a given backend
+ *
+ * @param backend - string name of the hardware backend
+ * @param result - test results
+ */
+template <typename WorkspaceType>
+void runTests(const std::string& backend, ReSolve::memory::MemorySpace memspace, ReSolve::tests::TestingResults& result)
+{
+  std::cout << "Running tests on " << backend << " device:\n";
+
+  WorkspaceType workspace;
+  workspace.initializeHandles();
+  ReSolve::MatrixHandler                  handler(&workspace);
+  std::mt19937                            generator(ReSolve::constants::SEED); // set random seed for reproducibility
+  ReSolve::tests::HykktCholeskyCuDssTests test(memspace, handler, generator);
+
+  result += test.minimalCorrectness();
+  handler.setValuesChanged(true, memspace);
+  workspace.resetLinAlgWorkspace(); // reset is necessary due to different sparsity.
+
+  for (int size : {3, 10, 100, 1000})
+  {
+    result += test.randomized(size);
+    handler.setValuesChanged(true, memspace);
+    workspace.resetLinAlgWorkspace();
+  }
+
+  result += test.randomizedReuseSparsityPattern(3, 10);
+
+  std::cout << "\n";
+}
+
+int main(int, char**)
+{
+  ReSolve::tests::TestingResults result;
+  runTests<ReSolve::LinAlgWorkspaceCUDA>("CUDA", ReSolve::memory::DEVICE, result);
+
+  return result.summary();
+}

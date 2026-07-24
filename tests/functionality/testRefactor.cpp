@@ -29,6 +29,9 @@
 #ifdef RESOLVE_USE_CUDA
 #include <resolve/LinSolverDirectCuSolverGLU.hpp>
 #include <resolve/LinSolverDirectCuSolverRf.hpp>
+#ifdef RESOLVE_USE_CUDSS
+#include <resolve/LinSolverDirectCuDssRf.hpp>
+#endif
 #endif
 
 #include "TestHelper.hpp"
@@ -61,9 +64,14 @@ int main(int argc, char* argv[])
   }
   if (rf_solver == "rf")
   {
-    std::string solver_name("cusolverRf");
+    std::string cusolver_solver_name("cusolverRf");
     error_sum += runTest<LinAlgWorkspaceCUDA,
-                         LinSolverDirectCuSolverRf>(argc, argv, solver_name);
+                         LinSolverDirectCuSolverRf>(argc, argv, cusolver_solver_name);
+#ifdef RESOLVE_USE_CUDSS
+    std::string cudss_solver_name("cusdssRf");
+    error_sum += runTest<LinAlgWorkspaceCUDA,
+                         LinSolverDirectCuDssRf>(argc, argv, cudss_solver_name);
+#endif
   }
   else
   {

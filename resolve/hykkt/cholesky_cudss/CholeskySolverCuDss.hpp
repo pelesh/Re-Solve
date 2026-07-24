@@ -1,11 +1,11 @@
 /**
- * @file CholeskySolver.hpp
+ * @file CholeskySolverCuDss.hpp
  * @author Adham Ibrahim (ibrahimas@ornl.gov)
- * @brief Cholesky decomposition solver header
+ * @brief Cholesky decomposition (cuDSS implementation) solver header. This is a CUDA-only variant of CholeskySolver.
  */
 
 #pragma once
-#include "CholeskySolverImpl.hpp"
+#include "CholeskySolverCuDssCuda.hpp"
 #include <resolve/MemoryUtils.hpp>
 #include <resolve/matrix/Csr.hpp>
 #include <resolve/vector/Vector.hpp>
@@ -14,12 +14,11 @@ namespace ReSolve
 {
   namespace hykkt
   {
-    class CholeskySolver
+    class CholeskySolverCuDss
     {
     public:
-      CholeskySolver(memory::MemorySpace memspace);
-      CholeskySolver(bool use_cudss, memory::MemorySpace memspace);
-      ~CholeskySolver();
+      CholeskySolverCuDss(memory::MemorySpace memspace);
+      ~CholeskySolverCuDss();
 
       void addMatrixInfo(matrix::Csr* A);
       void symbolicAnalysis();
@@ -30,9 +29,9 @@ namespace ReSolve
     private:
       memory::MemorySpace memspace_;
 
-      matrix::Csr*        A_;
-      real_type           tol_ = 1e-12;
-      CholeskySolverImpl* impl_;
+      matrix::Csr*             A_;
+      real_type                tol_ = 1e-12;
+      CholeskySolverCuDssCuda* impl_;
     };
   } // namespace hykkt
 } // namespace ReSolve
