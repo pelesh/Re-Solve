@@ -29,6 +29,12 @@ namespace ReSolve
       cusparseDestroy(handle_);
     }
 
+    void SpGEMMCuda::setCoefficients(real_type alpha, real_type beta)
+    {
+      alpha_ = alpha;
+      beta_  = beta;
+    }
+
     void SpGEMMCuda::loadProductMatrices(matrix::Csr* A, matrix::Csr* B)
     {
       A_descr_ = convertToCusparseType(A);
@@ -149,7 +155,7 @@ namespace ReSolve
         mem_.deleteOnDevice(temp_buffer_2);
 
         int64_t C_num_cols = 0;
-        int64_t C_nnz_     = 0;
+        C_nnz_             = 0;
         cusparseSpMatGetSize(C_descr_, &n_, &C_num_cols, &C_nnz_);
 
         mem_.allocateArrayOnDevice(&C_col_ind_, (index_type) C_nnz_);

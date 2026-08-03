@@ -7,10 +7,12 @@
 #include "HyKKTSolver.hpp"
 
 #include <resolve/matrix/io.hpp>
+#include <resolve/utilities/logger/Logger.hpp>
 
 namespace ReSolve
 {
   using namespace constants;
+  using out = io::Logger;
 
   /**
    * @brief basic constructor
@@ -62,6 +64,9 @@ namespace ReSolve
    * values. It will only set pointers to user provided data; it is user's
    * responsibility to supply and later delete that memory.
    *
+   * Reusing the solver requires the sparsity patterns of the matrix blocks
+   * to remain unchanged. Changing J_d between empty and nonempty is rejected.
+   *
    * @param[in] H_plus_D_x - Pointer to the Hessian matrix block (n_x x n_x),
    * corresponding to H + D_x in the HyKKT paper.
    * @param[in] D_s - Pointer to the slack variables derivatives matrix block
@@ -70,18 +75,32 @@ namespace ReSolve
    * (m_c x n_x).
    * @param[in] J_d - Pointer to the inequality constraints Jacobian block
    * (m_d x n_x)
+   *
+   * @return 0 if successful, 1 if the supplied blocks are incompatible with
+   *         the allocated solver state. On failure, the previously stored
+   *         blocks are left unchanged.
    */
-  void hykkt::HyKKTSolver::setMatrixBlocks(matrix::Csr* H_plus_D_x, matrix::Csr* D_s, matrix::Csr* J, matrix::Csr* J_d)
+  int hykkt::HyKKTSolver::setMatrixBlocks(matrix::Csr* H_plus_D_x, matrix::Csr* D_s, matrix::Csr* J, matrix::Csr* J_d)
   {
+    const bool J_d_flag = J_d->getNnz() > 0;
+
+    if (allocated_ && J_d_flag_ != J_d_flag)
+    {
+      out::error() << "Changing J_d between empty and nonempty is not "
+                      "supported when reusing HyKKT.\n";
+      return 1;
+    }
+
     H_   = H_plus_D_x;
     D_s_ = D_s;
     J_   = J;
     J_d_ = J_d;
 
-    bool J_d_flag = J_d->getNnz() > 0;
-    // status_ = (J_d_flag_ == J_d_flag);
-    status_   = true; // when using API, we can't check if sparsity pattern changed
-    J_d_flag_ = J_d_flag;
+    if (!allocated_)
+    {
+      J_d_flag_ = J_d_flag;
+    }
+    return 0;
   }
 
   /**
@@ -156,16 +175,6 @@ namespace ReSolve
    */
   real_type hykkt::HyKKTSolver::solve()
   {
-    // TODO: Review sparsity pattern checking in HyKKT
-    if (!status_ && allocated_)
-    {
-      printf("\n\nERROR: USING HYKKT WITH NEW NONZERO STRUCTURE\n\n");
-      std::cout << "status = " << status_
-                << ", allocated = " << allocated_
-                << "\n";
-      return 1;
-    }
-
     setupParameters();
 
     if (!allocated_)
@@ -200,6 +209,16 @@ namespace ReSolve
     }
     computeHgammaFactorization();
 
+    if (!allocated_)
+    {
+      sccg_ = new SchurComplementConjugateGradient(J_->getNumRows(),
+                                                   J_->getNumColumns(),
+                                                   cholesky_,
+                                                   matrixHandler_,
+                                                   vectorHandler_,
+                                                   memspace_);
+      sccg_->setup();
+    }
     setupConjugateGradient();
     computeConjugateGradient();
 
@@ -210,8 +229,8 @@ namespace ReSolve
   /**
    * @brief allocates and initiates variables for KKT system
    *
-   * @pre jd_flag_ determines if variables used for Spgemm H_tilde
-   *      should be initiated
+   * @pre J_d_flag_ determines whether variables used to form H_tilde with
+   *      SpGEMM should be initialized.
    *
    * @post all variables used for hykkt are allocated for; J_d-
    *       related variables are not initiated if J_d nnz == 0
@@ -242,7 +261,6 @@ namespace ReSolve
       J_tr_perm_   = new matrix::Csr(J_tr_->getNumRows(), J_tr_->getNumColumns(), J_tr_->getNnz());
       J_d_scaled_  = new matrix::Csr(J_d_->getNumRows(), J_d_->getNumColumns(), J_d_->getNnz());
 
-      D_s_vals_->setData(D_s_->getValues(memspace_), memspace_);
       r_yd_scaled_->allocate(memspace_);
       r_x_perm_->allocate(memspace_);
       omega_perm_->allocate(memspace_);
@@ -258,14 +276,12 @@ namespace ReSolve
       J_d_scaled_->allocateWithExternalSparsityPattern(J_d_->getRowData(memspace_), J_d_->getColData(memspace_), J_d_->getNnz(), memspace_);
       // H_tilde_ does not need to be allocated because loadResultMatrix() does it later
     }
-    else if (memspace_ == memory::DEVICE)
-    {
-      J_d_->syncData(memory::DEVICE); // check if this is redundant
-    }
 
+    // D_s may be replaced between solves, so refresh the external value pointer.
+    D_s_vals_->setData(D_s_->getValues(memspace_), memspace_);
     r_y_copy_->copyFromExternal(r_y_, memspace_, memspace_);
 
-    // check if this is redundant in later iterations
+    // Matrix values may change between solves, so refresh the transpose.
     matrixHandler_->transpose(J_, J_tr_, memspace_);
     if (J_d_flag_)
     {
@@ -314,7 +330,10 @@ namespace ReSolve
     else
     {
       H_tilde_->setNnz(H_->getNnz());
-      H_tilde_->allocateMatrixData(memspace_);
+      if (!allocated_)
+      {
+        H_tilde_->allocateMatrixData(memspace_);
+      }
       H_tilde_->copyFromExternal(H_->getRowData(memspace_),
                                  H_->getColData(memspace_),
                                  H_->getValues(memspace_),
@@ -388,9 +407,6 @@ namespace ReSolve
   void hykkt::HyKKTSolver::setupSpGEMMHgamma()
   {
     spgemm_hgamma_ = new SpGEMM(memspace_, gamma_, ONE);
-    spgemm_hgamma_->loadProductMatrices(J_tr_, J_);
-    spgemm_hgamma_->loadSumMatrix(H_tilde_);
-    spgemm_hgamma_->loadResultMatrix(&H_gamma_); // H_gamma_ will be created when calling SpGEMM->compute()
   }
 
   /*
@@ -403,6 +419,14 @@ namespace ReSolve
    */
   void hykkt::HyKKTSolver::computeSpGEMMHgamma()
   {
+    // Numerical values can change between solves while the sparsity pattern
+    // remains fixed, so refresh the SpGEMM inputs before recomputing H_gamma.
+    spgemm_hgamma_->setCoefficients(gamma_, ONE);
+    spgemm_hgamma_->loadProductMatrices(J_tr_, J_);
+    spgemm_hgamma_->loadSumMatrix(H_tilde_);
+    // HIP initializes the result descriptor using dimensions established by
+    // the product and sum inputs, so load the result matrix after both inputs.
+    spgemm_hgamma_->loadResultMatrix(&H_gamma_);
     spgemm_hgamma_->compute();
     r_x_hat_->copyFromExternal(r_x_til_, memspace_, memspace_);
     matrixHandler_->matvec(J_tr_, r_y_, r_x_hat_, &gamma_, &ONE, memspace_);
@@ -514,11 +538,9 @@ namespace ReSolve
     schur_->copyFromExternal(r_y_, memspace_, memspace_);
     matrixHandler_->matvec(J_perm_, omega_perm_, schur_, &ONE, &MINUS_ONE, memspace_);
 
-    sccg_ = new SchurComplementConjugateGradient(J_->getNumRows(), J_->getNumColumns(), cholesky_, matrixHandler_, vectorHandler_, memspace_);
     sccg_->addMatrixInfo(J_perm_, J_tr_perm_);
     y_->setToZero(memspace_);
     sccg_->addVectorInfo(y_, schur_);
-    sccg_->setup();
   }
 
   /**
@@ -553,10 +575,6 @@ namespace ReSolve
     // block-recovering the solution to the original system by parts
     // this part is to recover delta_x
     cholesky_->solve(z_, r_x_perm_);
-    if (memspace_ == memory::DEVICE)
-    {
-      x_->syncData(memory::DEVICE);
-    }
     permutation_->mapIndex(REV_PERM_V, z_->getData(memspace_), x_->getData(memspace_));
     x_->setDataUpdated(memspace_);
 
@@ -627,10 +645,17 @@ namespace ReSolve
     matrixHandler_->matvec(J_copy_, x_, r_y_copy_, &MINUS_ONE, &ONE, memspace_);
     norm_resy_sq = vectorHandler_->dot(r_y_copy_, r_y_copy_, memspace_);
 
-    // Calculate final relative norm
     norm_resx_sq += norm_resy_sq;
-    real_type norm_res = sqrt(norm_resx_sq) / sqrt(norm_r_x_sq);
-    printf("||Ax-b||/||b|| = %32.32g\n\n", norm_res);
+    real_type norm_res = sqrt(norm_resx_sq);
+    if (norm_r_x_sq > 0)
+    {
+      norm_res /= sqrt(norm_r_x_sq);
+      printf("||Ax-b||/||b|| = %32.32g\n\n", norm_res);
+    }
+    else
+    {
+      printf("||Ax-b|| = %32.32g\n\n", norm_res);
+    }
 
     allocated_ = true;
 

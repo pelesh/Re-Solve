@@ -142,6 +142,86 @@ namespace ReSolve
         testname += " N=" + std::to_string(N) + ", nnz =" + std::to_string(nnz) + '\n';
         status *= validateResult(error, tol);
 
+        // Replace D_s to exercise its pointer refresh; restore other inputs
+        // in place.
+        std::ifstream D_s_reuse_file(D_s_file_name);
+        std::ifstream J_update_file(J_file_name);
+        std::ifstream r_x_update_file(r_x_file_name);
+        std::ifstream r_s_update_file(r_s_file_name);
+        std::ifstream r_y_update_file(r_y_file_name);
+        std::ifstream r_yd_update_file(r_yd_file_name);
+
+        matrix::Csr* D_s_reuse = io::createCsrFromFile(D_s_reuse_file, false);
+
+        io::updateMatrixFromFile(J_update_file, J);
+        io::updateVectorFromFile(r_x_update_file, r_x);
+        io::updateVectorFromFile(r_s_update_file, r_s);
+        io::updateVectorFromFile(r_y_update_file, r_y);
+        io::updateVectorFromFile(r_yd_update_file, r_yd);
+
+        real_type* D_s_values = D_s_reuse->getValues(memory::HOST);
+        for (index_type i = 0; i < D_s_reuse->getNnz(); ++i)
+        {
+          D_s_values[i] *= 1.1;
+        }
+
+        D_s_reuse->setUpdated(memory::HOST);
+        J->setUpdated(memory::HOST);
+
+        if (memspace_ == memory::DEVICE)
+        {
+          int restore_status = 0;
+          restore_status |= D_s_reuse->allocateMatrixData(memory::DEVICE);
+          restore_status |= D_s_reuse->syncData(memory::DEVICE);
+          restore_status |= J->syncData(memory::DEVICE);
+          restore_status |= r_x->syncData(memory::DEVICE);
+          restore_status |= r_s->syncData(memory::DEVICE);
+          restore_status |= r_y->syncData(memory::DEVICE);
+          restore_status |= r_yd->syncData(memory::DEVICE);
+          status *= (restore_status == 0);
+        }
+
+        hykktSolver.setMatrixBlocks(H, D_s_reuse, J, J_d);
+
+        // Change gamma to verify the cached SpGEMM coefficient is refreshed.
+        hykktSolver.setGamma(gamma * 1.1);
+        real_type second_error = hykktSolver.solve();
+        status *= validateResult(second_error, tol);
+
+        // Check that a zero RHS doesn't result in NaNs.
+        r_x->setToZero(memspace_);
+        r_s->setToZero(memspace_);
+        r_y->setToZero(memspace_);
+        r_yd->setToZero(memspace_);
+        real_type zero_rhs_error = hykktSolver.solve();
+        status *= validateResult(zero_rhs_error, tol);
+
+        // Check that the solver raises an error when trying to change J_d
+        // from nonempty to empty.
+        matrix::Csr* J_d_empty = new matrix::Csr(J_d->getNumRows(),
+                                                 J_d->getNumColumns(),
+                                                 0);
+
+        int structure_status = hykktSolver.setMatrixBlocks(H, D_s_reuse, J, J_d_empty);
+        status *= (structure_status != 0);
+
+        // Exercise initialization and reuse with an empty J_d.
+        hykkt::HyKKTSolver no_jd_solver(n_x, m_d, m_c, memspace_);
+        no_jd_solver.setMatrixBlocks(H, D_s_reuse, J, J_d_empty);
+        no_jd_solver.setRHSBlocks(r_x, r_s, r_y, r_yd);
+        no_jd_solver.setLHSPointers(x, s, y, y_d);
+        no_jd_solver.setGamma(gamma);
+        no_jd_solver.addHandlers(&matrixHandler_, &vectorHandler_);
+
+        real_type no_jd_error = no_jd_solver.solve();
+        status *= validateResult(no_jd_error, tol);
+
+        real_type no_jd_reuse_error = no_jd_solver.solve();
+        status *= validateResult(no_jd_reuse_error, tol);
+
+        delete D_s_reuse;
+        delete J_d_empty;
+
         delete H;
         delete D_s;
         delete J;

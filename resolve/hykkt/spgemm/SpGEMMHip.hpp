@@ -22,11 +22,13 @@ namespace ReSolve
       SpGEMMHip(real_type alpha, real_type beta);
       ~SpGEMMHip();
 
-      void loadProductMatrices(matrix::Csr* A, matrix::Csr* B);
-      void loadSumMatrix(matrix::Csr* D);
-      void loadResultMatrix(matrix::Csr** E_ptr);
+      void setCoefficients(real_type alpha, real_type beta) override;
 
-      void compute();
+      void loadProductMatrices(matrix::Csr* A, matrix::Csr* B) override;
+      void loadSumMatrix(matrix::Csr* D) override;
+      void loadResultMatrix(matrix::Csr** E_ptr) override;
+
+      void compute() override;
 
     private:
       MemoryHandler mem_;
